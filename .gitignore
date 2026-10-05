@@ -1,0 +1,145 @@
+# ==============================
+# Python
+# ==============================
+
+__pycache__/
+*.py[cod]
+*$py.class
+
+*.so
+
+# Virtual environment
+.venv/
+venv/
+env/
+ENV/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# PyInstaller
+*.manifest
+*.spec
+
+
+# ==============================
+# Environment / secrets
+# ==============================
+
+.env
+.env.*
+!.env.example
+
+# API keys / local config
+secrets/
+credentials/
+
+
+# ==============================
+# IDE
+# ==============================
+
+.vscode/
+.idea/
+
+# VS Code local history
+.history/
+
+
+# ==============================
+# Jupyter
+# ==============================
+
+.ipynb_checkpoints/
+
+
+# ==============================
+# YOLO / ML models
+# ==============================
+
+# Model weights
+*.pt
+*.pth
+*.onnx
+*.engine
+
+# YOLO training artifacts
+runs/
+weights/
+checkpoints/
+
+
+# ==============================
+# Input data
+# ==============================
+
+# Video files
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+
+# Images
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.tiff
+*.webp
+
+
+# ==============================
+# Generated results
+# ==============================
+
+results/
+output/
+outputs/
+
+# Generated heatmaps
+heatmaps/
+
+# Processed videos
+processed_videos/
+
+# Temporary files
+tmp/
+temp/
+
+
+# ==============================
+# Logs
+# ==============================
+
+*.log
+logs/
+
+
+# ==============================
+# OS
+# ==============================
+
+# Linux
+*~
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+Desktop.ini
+
+
+# ==============================
+# Project-specific
+# ==============================
+
+# Local configuration
+config.local.*
+
+# Cache
+.cache/
