@@ -34,6 +34,9 @@ class VideoProcessor:
 
             yield frame
 
+    def resize_frame(self, frame, width: int, height: int):
+        return cv2.resize(frame, (width, height))
+
     def show(self, window_name: str = "Video"):
         for frame in self.read_frames():
             cv2.imshow(window_name, frame)
