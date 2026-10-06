@@ -91,6 +91,23 @@ class VideoProcessor:
                 thickness
             )
     
+    def draw_line(
+        self,
+        frame,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        color: tuple = (255, 0, 0),
+        thickness: int = 2):
+            return cv2.line(
+                frame,
+                (x1, y1),
+                (x2, y2),
+                color,
+                thickness
+            )
+    
 
     def show(self, frame, window_name: str = "Video"):
         cv2.imshow(window_name, frame)
