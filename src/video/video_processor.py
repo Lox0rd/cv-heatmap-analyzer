@@ -10,15 +10,28 @@ class VideoProcessor:
         if not self.capture.isOpened():
             raise ValueError(f"Не удалось открыть источник: {video_source}")
 
+        self.is_camera = isinstance(video_source, int)
+        
     def get_info(self) -> dict:
         width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         fps = self.capture.get(cv2.CAP_PROP_FPS)
-        frame_count = int(self.capture.get(cv2.CAP_PROP_FRAME_COUNT))
 
+        if self.is_camera:
+            return {
+                "source": "camera",
+                "width": width,
+                "height": height,
+                "fps": fps,
+                "frame_count": None,
+                "duration": None,
+            }
+
+        frame_count = int(self.capture.get(cv2.CAP_PROP_FRAME_COUNT))
         duration = frame_count / fps if fps > 0 else 0
 
         return {
+            "source": "video",
             "width": width,
             "height": height,
             "fps": fps,
@@ -150,6 +163,10 @@ class VideoProcessor:
             fps,
             (width, height)
         )
+        if not writer.isOpened():
+            raise ValueError(
+                f"Не удалось создать видео: {output_path}"
+            )
 
     def release(self):
         self.capture.release()

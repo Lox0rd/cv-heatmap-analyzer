@@ -1,6 +1,6 @@
 from src.video.video_processor import VideoProcessor 
-# video = VideoProcessor(0)
-video = VideoProcessor("data/input/video.mp4")
+video = VideoProcessor(0)
+# video = VideoProcessor("data/input/video.mp4")
 info = video.get_info()
 print(video.get_info())
 video.set_frame_position(1000)
