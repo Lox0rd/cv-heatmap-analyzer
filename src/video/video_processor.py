@@ -40,6 +40,16 @@ class VideoProcessor:
     def crop_frame(self, frame, x1: int, y1: int, x2: int, y2: int):
         return frame[y1:y2, x1:x2]
 
+    def convert_color(self, frame, conversion_code):
+        """
+    Варианты преобразования кадра через OpenCV (параметр conversion_code):
+    cv2.COLOR_BGR2RGB
+    cv2.COLOR_BGR2GRAY
+    cv2.COLOR_BGR2HSV
+    cv2.COLOR_RGB2BGR
+    """
+        return cv2.cvtColor(frame, conversion_code)
+
     def show(self, window_name: str = "Video"):
         for frame in self.read_frames():
             cv2.imshow(window_name, frame)
