@@ -11,8 +11,9 @@ for frame in video.read_frames():
         100, 50,
         1110, 650
     )
-    frame = video.draw_rectangle(frame, 100, 50, 111, 65)
+    frame = video.draw_rectangle(frame, 190, 75, 300, 105)
     frame = video.convert_color(frame, "BGR2RGB")
+    frame = video.draw_text(frame, "Тест", 200, 100, color=(0, 255, 0), font_scale=1, thickness=2)
     if not video.show(frame):
         break
 

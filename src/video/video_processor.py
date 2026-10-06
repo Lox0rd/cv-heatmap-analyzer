@@ -56,21 +56,41 @@ class VideoProcessor:
         return cv2.cvtColor(frame, conversions[conversion_code])
 
     def draw_rectangle(
-    self,
-    frame,
-    x1: int,
-    y1: int,
-    x2: int,
-    y2: int,
-    color: tuple = (0, 255, 0),
-    thickness: int = 2):
-        return cv2.rectangle(
-            frame,
-            (x1, y1),
-            (x2, y2),
-            color,
-            thickness
-        )
+        self,
+        frame,
+        x1: int,
+        y1: int,
+        x2: int,
+        y2: int,
+        color: tuple = (0, 255, 0),
+        thickness: int = 2):
+            return cv2.rectangle(
+                frame,
+                (x1, y1),
+                (x2, y2),
+                color,
+                thickness
+            )
+
+    def draw_text(
+        self,
+        frame,
+        text: str,
+        x: int,
+        y: int,
+        color: tuple = (0, 255, 0),
+        font_scale: float = 0.7,
+        thickness: int = 2):
+            return cv2.putText(
+                frame,
+                text,
+                (x, y),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                font_scale,
+                color,
+                thickness
+            )
+    
 
     def show(self, frame, window_name: str = "Video"):
         cv2.imshow(window_name, frame)
