@@ -3,6 +3,7 @@ from src.video.video_processor import VideoProcessor
 video = VideoProcessor("data/input/video.mp4")
 info = video.get_info()
 print(video.get_info())
+video.set_frame_position(1000)
 writer = video.create_writer(
     "data/output/result.mp4",
     1010,
@@ -12,7 +13,7 @@ writer = video.create_writer(
 
 for frame in video.read_frames(skip_frames=1):
     frame = video.resize_frame(frame, 1280, 720)
-
+    # print("Кадр номер:", video.get_current_frame_index())
     frame = video.crop_frame(
         frame,
         100, 50,

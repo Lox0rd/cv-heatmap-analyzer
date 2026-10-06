@@ -27,6 +27,9 @@ class VideoProcessor:
         }
 
     def read_frames(self, skip_frames: int = 0):
+        if skip_frames < 0:
+            raise ValueError("skip_frames не может быть отрицательным")
+
         frame_index = 0
 
         while True:
@@ -39,6 +42,21 @@ class VideoProcessor:
                 yield frame
 
             frame_index += 1
+
+    def set_frame_position(self, frame_index: int):
+        if frame_index < 0:
+            raise ValueError("Номер кадра не может быть отрицательным")
+
+        self.capture.set(
+            cv2.CAP_PROP_POS_FRAMES,
+            frame_index
+        )
+    
+
+    def get_current_frame_index(self) -> int:
+        return int(
+            self.capture.get(cv2.CAP_PROP_POS_FRAMES)
+        )
 
     def resize_frame(self, frame, width: int, height: int):
         return cv2.resize(frame, (width, height))
