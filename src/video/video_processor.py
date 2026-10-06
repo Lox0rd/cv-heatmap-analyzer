@@ -26,14 +26,19 @@ class VideoProcessor:
             "duration": duration,
         }
 
-    def read_frames(self):
+    def read_frames(self, skip_frames: int = 0):
+        frame_index = 0
+
         while True:
             success, frame = self.capture.read()
 
             if not success:
                 break
 
-            yield frame
+            if frame_index % (skip_frames + 1) == 0:
+                yield frame
+
+            frame_index += 1
 
     def resize_frame(self, frame, width: int, height: int):
         return cv2.resize(frame, (width, height))

@@ -10,7 +10,7 @@ writer = video.create_writer(
     info["fps"]
 )
 
-for frame in video.read_frames():
+for frame in video.read_frames(skip_frames=1):
     frame = video.resize_frame(frame, 1280, 720)
 
     frame = video.crop_frame(
