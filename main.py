@@ -13,10 +13,10 @@ writer = video.create_writer(
     600,
     info["fps"]
 )
-print(vision.analyze(
-    "data/input/frame.jpg",
-    "Что находится на изображении?"
-))
+# print(vision.analyze(
+#     "data/input/frame.jpg",
+#     "Что находится на изображении?"
+# ))
 for frame in video.read_frames(skip_frames=1):
     frame = video.resize_frame(frame, 1280, 720)
     # print("Кадр номер:", video.get_current_frame_index())
