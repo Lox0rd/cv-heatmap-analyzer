@@ -2,12 +2,13 @@ import cv2
 
 
 class VideoProcessor:
-    def __init__(self, video_path: str):
-        self.video_path = video_path
-        self.capture = cv2.VideoCapture(video_path)
+    """Для отображения камеры video_source = 0"""
+    def __init__(self, video_source):
+        self.video_source = video_source
+        self.capture = cv2.VideoCapture(video_source)
 
         if not self.capture.isOpened():
-            raise ValueError(f"Не удалось открыть видео: {video_path}")
+            raise ValueError(f"Не удалось открыть источник: {video_source}")
 
     def get_info(self) -> dict:
         width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
