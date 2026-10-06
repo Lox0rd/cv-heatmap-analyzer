@@ -40,22 +40,45 @@ class VideoProcessor:
     def crop_frame(self, frame, x1: int, y1: int, x2: int, y2: int):
         return frame[y1:y2, x1:x2]
 
-    def convert_color(self, frame, conversion_code):
-        """
-    Варианты преобразования кадра через OpenCV (параметр conversion_code):
-    cv2.COLOR_BGR2RGB
-    cv2.COLOR_BGR2GRAY
-    cv2.COLOR_BGR2HSV
-    cv2.COLOR_RGB2BGR
-    """
-        return cv2.cvtColor(frame, conversion_code)
+    def convert_color(self, frame, conversion_code: str):
+        conversions = {
+            "BGR2RGB": cv2.COLOR_BGR2RGB,
+            "BGR2GRAY": cv2.COLOR_BGR2GRAY,
+            "BGR2HSV": cv2.COLOR_BGR2HSV,
+            "RGB2BGR": cv2.COLOR_RGB2BGR,
+        }
 
-    def show(self, window_name: str = "Video"):
-        for frame in self.read_frames():
-            cv2.imshow(window_name, frame)
+        if conversion_code not in conversions:
+            raise ValueError(
+                f"Неизвестный тип преобразования: {conversion_code}"
+            )
 
-            if cv2.waitKey(1) & 0xFF == ord("q"):
-                break
+        return cv2.cvtColor(frame, conversions[conversion_code])
+
+    def draw_rectangle(
+    self,
+    frame,
+    x1: int,
+    y1: int,
+    x2: int,
+    y2: int,
+    color: tuple = (0, 255, 0),
+    thickness: int = 2):
+        return cv2.rectangle(
+            frame,
+            (x1, y1),
+            (x2, y2),
+            color,
+            thickness
+        )
+
+    def show(self, frame, window_name: str = "Video"):
+        cv2.imshow(window_name, frame)
+
+        if cv2.waitKey(1) & 0xFF == ord("q"):
+            return False
+
+        return True
 
     def release(self):
         self.capture.release()
