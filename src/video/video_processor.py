@@ -36,6 +36,9 @@ class VideoProcessor:
 
     def resize_frame(self, frame, width: int, height: int):
         return cv2.resize(frame, (width, height))
+    
+    def crop_frame(self, frame, x1: int, y1: int, x2: int, y2: int):
+        return frame[y1:y2, x1:x2]
 
     def show(self, window_name: str = "Video"):
         for frame in self.read_frames():
