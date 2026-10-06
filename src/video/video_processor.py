@@ -118,6 +118,16 @@ class VideoProcessor:
 
         return True
 
+    def create_writer(self, output_path: str, width: int, height: int, fps: float):
+        fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+
+        return cv2.VideoWriter(
+            output_path,
+            fourcc,
+            fps,
+            (width, height)
+        )
+
     def release(self):
         self.capture.release()
         cv2.destroyAllWindows()
