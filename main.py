@@ -1,4 +1,7 @@
 from src.video.video_processor import VideoProcessor 
+from src.ai.vision_api import VisionAPI
+
+vision = VisionAPI()
 video = VideoProcessor(0)
 # video = VideoProcessor("data/input/video.mp4")
 info = video.get_info()
@@ -10,7 +13,10 @@ writer = video.create_writer(
     600,
     info["fps"]
 )
-
+print(vision.analyze(
+    "data/input/frame.jpg",
+    "Что находится на изображении?"
+))
 for frame in video.read_frames(skip_frames=1):
     frame = video.resize_frame(frame, 1280, 720)
     # print("Кадр номер:", video.get_current_frame_index())
