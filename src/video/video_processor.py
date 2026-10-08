@@ -157,16 +157,19 @@ class VideoProcessor:
     def create_writer(self, output_path: str, width: int, height: int, fps: float):
         fourcc = cv2.VideoWriter_fourcc(*"mp4v")
 
-        return cv2.VideoWriter(
+        writer = cv2.VideoWriter(
             output_path,
             fourcc,
             fps,
             (width, height)
         )
+
         if not writer.isOpened():
             raise ValueError(
                 f"Не удалось создать видео: {output_path}"
             )
+
+        return writer
 
     def release(self):
         self.capture.release()

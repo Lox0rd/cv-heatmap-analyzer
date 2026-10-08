@@ -78,6 +78,7 @@ checkpoints/
 
 # Video files
 *.mp4
+!tests/data/test.mp4
 *.avi
 *.mov
 *.mkv
@@ -143,3 +144,6 @@ config.local.*
 
 # Cache
 .cache/
+
+# CI
+.coverage
