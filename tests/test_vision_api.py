@@ -9,7 +9,7 @@ from src.ai.vision_api import VisionAPI
 
 @pytest.fixture
 def vision_api():
-    with patch("src.ai.vision_api.OpenAI") as mock_openai:
+    with patch("src.ai.vision_api.OpenAI"):
         api = VisionAPI(
             api_key="test-api-key",
             base_url="https://test.example.com/v1",

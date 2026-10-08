@@ -3,6 +3,7 @@ import pytest
 
 from src.video.video_processor import VideoProcessor
 
+
 def test_open_video():
     processor = VideoProcessor("tests/data/test.mp4")
 
