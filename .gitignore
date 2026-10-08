@@ -143,3 +143,6 @@ config.local.*
 
 # Cache
 .cache/
+
+# CI
+.coverage
