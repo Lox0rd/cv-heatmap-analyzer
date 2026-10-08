@@ -42,7 +42,10 @@ class VisionAPI:
         return self._send_request(image_data, prompt)
 
     def analyze_frame(self, frame, prompt: str) -> str:
-        success, buffer = cv2.imencode(".jpg", frame)
+        try:
+            success, buffer = cv2.imencode(".jpg", frame)
+        except cv2.error as error:
+            raise ValueError("Не удалось закодировать кадр") from error
 
         if not success:
             raise ValueError("Не удалось закодировать кадр")
