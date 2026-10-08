@@ -78,6 +78,7 @@ checkpoints/
 
 # Video files
 *.mp4
+!tests/data/test.mp4
 *.avi
 *.mov
 *.mkv
