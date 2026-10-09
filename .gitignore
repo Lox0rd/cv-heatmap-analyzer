@@ -147,3 +147,5 @@ config.local.*
 
 # CI
 .coverage
+.pytest_cache/
+.ruff_cache/
