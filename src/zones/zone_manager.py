@@ -1,9 +1,7 @@
-
 from dataclasses import dataclass
 
 import cv2
 import numpy as np
-
 
 Point = tuple[int, int]
 
@@ -34,9 +32,7 @@ class ZoneManager:
             raise ValueError(f"Зона '{name}' уже существует")
 
         if len(points) < 3:
-            raise ValueError(
-                "Для создания зоны необходимо минимум 3 точки"
-            )
+            raise ValueError("Для создания зоны необходимо минимум 3 точки")
 
         normalized_points = []
 
@@ -45,38 +41,23 @@ class ZoneManager:
                 not isinstance(point, (tuple, list))
                 or len(point) != 2
                 or any(
-                    isinstance(value, bool)
-                    or not isinstance(value, (int, np.integer))
+                    isinstance(value, bool) or not isinstance(value, (int, np.integer))
                     for value in point
                 )
             ):
-                raise ValueError(
-                    "Координаты должны быть целочисленными парами (x, y)"
-                )
+                raise ValueError("Координаты должны быть целочисленными парами (x, y)")
 
-            normalized_points.append(
-                (int(point[0]), int(point[1]))
-            )
+            normalized_points.append((int(point[0]), int(point[1])))
 
         if len(set(normalized_points)) < 3:
-            raise ValueError(
-                "Зона должна содержать минимум 3 различные точки"
-            )
+            raise ValueError("Зона должна содержать минимум 3 различные точки")
 
-        contour = np.array(
-            normalized_points,
-            dtype=np.int32
-        ).reshape((-1, 1, 2))
+        contour = np.array(normalized_points, dtype=np.int32).reshape((-1, 1, 2))
 
         if cv2.contourArea(contour) == 0:
-            raise ValueError(
-                "Нельзя создать зону с нулевой площадью"
-            )
+            raise ValueError("Нельзя создать зону с нулевой площадью")
 
-        zone = Zone(
-            name=name,
-            points=tuple(normalized_points)
-        )
+        zone = Zone(name=name, points=tuple(normalized_points))
 
         self._zones[name] = zone
 
@@ -103,24 +84,15 @@ class ZoneManager:
 
         return list(self._zones.values())
 
-    def is_point_in_zone(
-        self,
-        point: Point,
-        zone_name: str
-    ) -> bool:
+    def is_point_in_zone(self, point: Point, zone_name: str) -> bool:
         """Проверяет, находится ли точка внутри зоны."""
 
         zone = self.get_zone(zone_name)
 
-        contour = np.array(
-            zone.points,
-            dtype=np.int32
-        ).reshape((-1, 1, 2))
+        contour = np.array(zone.points, dtype=np.int32).reshape((-1, 1, 2))
 
         result = cv2.pointPolygonTest(
-            contour,
-            (float(point[0]), float(point[1])),
-            False
+            contour, (float(point[0]), float(point[1])), False
         )
 
         # Точка на границе тоже считается частью зоны.
