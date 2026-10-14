@@ -105,6 +105,7 @@ class VideoProcessor:
             ),
             "source_type": self.source_type,
             "source_value": str(self.video_source),
+            "is_stream": is_stream,
             "width": width,
             "height": height,
             "fps": fps,
