@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+from unittest.mock import MagicMock, patch
 
 from src.video.video_processor import VideoProcessor
 
@@ -119,3 +120,73 @@ def test_convert_color_invalid():
         )
 
     processor.release()
+
+
+def test_detect_source_type():
+    assert VideoProcessor._detect_source_type(None, 0) == "camera"
+    assert (
+        VideoProcessor._detect_source_type(None, "tests/data/test.mp4")
+        == "file"
+    )
+    assert (
+        VideoProcessor._detect_source_type(
+            None, "rtsp://127.0.0.1:554/stream"
+        )
+        == "rtsp"
+    )
+    assert (
+        VideoProcessor._detect_source_type(
+            None, "http://127.0.0.1:8080/stream"
+        )
+        == "http_stream"
+    )
+
+
+def test_read_single_frame():
+    processor = VideoProcessor("tests/data/test.mp4")
+
+    try:
+        frame = processor.read_single_frame()
+
+        assert frame is not None
+        assert frame.ndim == 3
+    finally:
+        processor.release()
+
+
+def test_set_frame_position_negative():
+    processor = VideoProcessor("tests/data/test.mp4")
+
+    try:
+        with pytest.raises(ValueError):
+            processor.set_frame_position(-1)
+    finally:
+        processor.release()
+
+
+def test_set_frame_position_for_camera():
+    with patch(
+        "src.video.video_processor.cv2.VideoCapture"
+    ) as mock_capture:
+        mock_capture.return_value.isOpened.return_value = True
+
+        processor = VideoProcessor(0)
+
+        try:
+            with pytest.raises(ValueError):
+                processor.set_frame_position(10)
+        finally:
+            processor.release()
+
+
+def test_read_single_frame_failed():
+    processor = VideoProcessor("tests/data/test.mp4")
+
+    try:
+        processor.capture.read = MagicMock(
+            return_value=(False, None)
+        )
+
+        assert processor.read_single_frame() is None
+    finally:
+        processor.release()
