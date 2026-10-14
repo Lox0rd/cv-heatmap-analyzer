@@ -180,14 +180,20 @@ def test_set_frame_position_for_camera():
             processor.release()
 
 
-def test_read_single_frame_failed():
+def test_read_single_frame_failed(monkeypatch):
     processor = VideoProcessor("tests/data/test.mp4")
 
-    try:
-        # Безопасно подменяем read-only метод через patch.object
-        with patch.object(processor.capture, 'read', return_value=(False, None)):
-            result = processor.read_single_frame()
+    class FakeCapture:
+        def read(self):
+            return False, None
 
+        def release(self):
+            pass
+
+    monkeypatch.setattr(processor, "capture", FakeCapture())
+
+    try:
+        result = processor.read_single_frame()
         assert result is None
     finally:
         processor.release()
