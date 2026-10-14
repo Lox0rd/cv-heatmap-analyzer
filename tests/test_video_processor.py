@@ -184,10 +184,10 @@ def test_read_single_frame_failed():
     processor = VideoProcessor("tests/data/test.mp4")
 
     try:
-        processor.capture.read = MagicMock(
-            return_value=(False, None)
-        )
+        # Безопасно подменяем read-only метод через patch.object
+        with patch.object(processor.capture, 'read', return_value=(False, None)):
+            result = processor.read_single_frame()
 
-        assert processor.read_single_frame() is None
+        assert result is None
     finally:
         processor.release()
