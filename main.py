@@ -41,7 +41,7 @@ from src.heatmap.generator import HeatmapGenerator
 from src.heatmap.renderer import HeatmapRenderer
 
 def main():
-    video = VideoProcessor("data/input/VideoTests/people1.mp4")
+    video = VideoProcessor("data/input/VideoTests/cars1.mp4")
     # Для RTSP можно использовать:
     # video = VideoProcessor("rtsp://localhost:8554/test")
     # Для локальной камеры:
@@ -63,7 +63,7 @@ def main():
         for frame in video.read_frames(skip_frames=0):
             detections = tracker.update(
                 frame,
-                objects=["person", "car"],
+                objects=None,
                 confidence=0.5,
             )
 
