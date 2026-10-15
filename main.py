@@ -40,7 +40,7 @@ from src.detection.tracker import ObjectTracker
 
 
 def main():
-    video = VideoProcessor("data/input/VideoTests/cars and people.mp4")
+    video = VideoProcessor(0)
     # Для RTSP можно использовать:
     # video = VideoProcessor("rtsp://localhost:8554/test")
     # Для локальной камеры:
@@ -50,12 +50,6 @@ def main():
     tracker = ObjectTracker(detector)
     
     info = video.get_info()
-    writer = video.create_writer(
-            "data/output/result.mp4",
-            1280,
-            720,
-            info["fps"]
-        )
     print("Информация о видео:", info)
 
     try:
@@ -96,8 +90,6 @@ def main():
                     font_scale=0.6,
                     thickness=2,
                 )
-            print("Кадр номер:", video.get_current_frame_index())
-            writer.write(frame)
             # Показываем обработанный кадр
             if not video.show(frame, window_name="YOLO Tracking"):
                 break
