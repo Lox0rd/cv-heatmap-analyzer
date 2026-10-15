@@ -12,7 +12,7 @@ class YOLODetector:
         "truck": 7,
     }
 
-    def __init__(self, model_path="yolov8n.pt"):
+    def __init__(self, model_path="models/yolo26n.pt"):
         self.model = YOLO(model_path)
 
     def detect(self, frame, objects=None, confidence=0.5):

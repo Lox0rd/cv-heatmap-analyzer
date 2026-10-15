@@ -1,4 +1,3 @@
-
 from src.detection.detector import YOLODetector
 
 
