@@ -37,10 +37,11 @@
 from src.video.video_processor import VideoProcessor
 from src.detection.detector import YOLODetector
 from src.detection.tracker import ObjectTracker
-
+from src.heatmap.generator import HeatmapGenerator
+from src.heatmap.renderer import HeatmapRenderer
 
 def main():
-    video = VideoProcessor(0)
+    video = VideoProcessor("data/input/VideoTests/people1.mp4")
     # Для RTSP можно использовать:
     # video = VideoProcessor("rtsp://localhost:8554/test")
     # Для локальной камеры:
@@ -51,6 +52,12 @@ def main():
     
     info = video.get_info()
     print("Информация о видео:", info)
+    heatmap_generator = HeatmapGenerator(
+        width=info["width"],
+        height=info["height"],
+    )
+
+    heatmap_renderer = HeatmapRenderer()
 
     try:
         for frame in video.read_frames(skip_frames=0):
@@ -59,6 +66,8 @@ def main():
                 objects=["person", "car"],
                 confidence=0.5,
             )
+
+            heatmap_generator.update(detections)
 
             for obj in detections:
                 x1, y1, x2, y2 = obj["bbox"]
@@ -90,11 +99,20 @@ def main():
                     font_scale=0.6,
                     thickness=2,
                 )
+            display_frame = heatmap_renderer.overlay(
+                frame,
+                heatmap_generator.get_heatmap(),
+                alpha=0.5,
+            )
             # Показываем обработанный кадр
-            if not video.show(frame, window_name="YOLO Tracking"):
+            if not video.show(display_frame, window_name="YOLO Tracking"):
                 break
 
     finally:
+        heatmap_renderer.save(
+            heatmap_generator.get_heatmap(),
+            "data/output/heatmap.jpg",
+        )
         video.release()
 
 
