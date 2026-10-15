@@ -2,9 +2,9 @@ from src.ai.vision_api import VisionAPI
 from src.video.video_processor import VideoProcessor
 
 vision = VisionAPI()
-video = VideoProcessor("rtsp://localhost:8554/test")
+# video = VideoProcessor("rtsp://localhost:8554/test")
 # video = VideoProcessor(0)
-# video = VideoProcessor("data/input/video.mp4")
+video = VideoProcessor("data/input/video.mp4")
 info = video.get_info()
 print(video.get_info())
 #video.set_frame_position(1000)
