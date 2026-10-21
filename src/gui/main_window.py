@@ -12,6 +12,7 @@ from PyQt6.QtWidgets import (
 from src.gui.video_widget import VideoWidget
 from src.gui.settings_widget import SettingsWidget
 from src.gui.processing_thread import ProcessingThread
+from src.gui.preview_thread import VideoPreviewThread
 
 
 class MainWindow(QMainWindow):
@@ -22,6 +23,7 @@ class MainWindow(QMainWindow):
         self.resize(1200, 700)
 
         self.thread = None
+        self.preview_thread = None
 
         self._load_styles()
         self._init_ui()
@@ -42,7 +44,9 @@ class MainWindow(QMainWindow):
                 style_path.read_text(encoding="utf-8")
             )
         else:
-            print(f"[WARNING] Файл стилей не найден: {style_path}")
+            print(
+                f"[WARNING] Файл стилей не найден: {style_path}"
+            )
 
     def _init_ui(self):
         central_widget = QWidget()
@@ -61,26 +65,123 @@ class MainWindow(QMainWindow):
 
         self.settings_widget = SettingsWidget()
 
-        # Ползунок перемотки находится под видео.
+        # Перемещаем группу предпросмотра под видеовиджет.
         left_layout.addWidget(
             self.settings_widget.seek_group,
             stretch=0,
         )
 
         main_layout.addLayout(left_layout, stretch=3)
-        main_layout.addWidget(self.settings_widget, stretch=1)
+        main_layout.addWidget(
+            self.settings_widget,
+            stretch=1,
+        )
 
-        # Подключение сигналов.
+        # Сигналы анализа.
         self.settings_widget.start_requested.connect(
             self.start_processing
         )
         self.settings_widget.stop_requested.connect(
             self.stop_processing
         )
+
+        # Сигналы предпросмотра.
+        self.settings_widget.preview_play_requested.connect(
+            self.play_preview
+        )
         self.settings_widget.seek_requested.connect(
             self._on_seek
         )
 
+    # === Предпросмотр видео ===
+    def play_preview(self):
+        """Запускает воспроизведение или переключает паузу."""
+        if self.thread and self.thread.isRunning():
+            self.settings_widget.set_status(
+                "Предпросмотр недоступен во время анализа."
+            )
+            return
+
+        if (
+            self.settings_widget.source_type_combo.currentData()
+            != "file"
+        ):
+            self.settings_widget.set_status(
+                "Предпросмотр доступен только для видеофайлов."
+            )
+            return
+
+        source = (
+            self.settings_widget.source_input.text().strip()
+        )
+
+        if not source:
+            self.settings_widget.set_status(
+                "Сначала выберите видеофайл."
+            )
+            return
+
+        # Если поток предпросмотра работает — Play/Pause.
+        if (
+            self.preview_thread is not None
+            and self.preview_thread.isRunning()
+        ):
+            playing = self.preview_thread.toggle_playback()
+            self.settings_widget.set_preview_playing(playing)
+            return
+
+        # Если дошли до последнего кадра, начинаем сначала.
+        start_frame = self.settings_widget.seek_slider.value()
+        total_frames = self.settings_widget._total_frames
+
+        if total_frames > 0 and start_frame >= total_frames - 1:
+            start_frame = 0
+
+        self.preview_thread = VideoPreviewThread(
+            source,
+            start_frame=start_frame,
+        )
+
+        self.preview_thread.frame_ready.connect(
+            self.video_widget.update_frame
+        )
+        self.preview_thread.position_changed.connect(
+            self.settings_widget.set_current_frame
+        )
+        self.preview_thread.total_frames_changed.connect(
+            self.settings_widget.set_total_frames
+        )
+        self.preview_thread.error_occurred.connect(
+            self.settings_widget.set_status
+        )
+        self.preview_thread.playback_finished.connect(
+            self._on_preview_finished
+        )
+
+        self.settings_widget.set_preview_playing(True)
+        self.settings_widget.set_status(
+            "Воспроизведение видео..."
+        )
+
+        self.preview_thread.start()
+
+    def _on_preview_finished(self):
+        self.settings_widget.set_preview_playing(False)
+        self.settings_widget.set_status(
+            "Предпросмотр завершён."
+        )
+
+    def _stop_preview(self):
+        if (
+            self.preview_thread is not None
+            and self.preview_thread.isRunning()
+        ):
+            self.preview_thread.stop()
+
+        self.preview_thread = None
+        self.settings_widget.set_preview_playing(False)
+
+    # === Полный анализ ===
     def start_processing(
         self,
         sources: list,
@@ -91,7 +192,12 @@ class MainWindow(QMainWindow):
         show_detections: bool,
         show_heatmap: bool,
     ):
-        self.settings_widget.set_status("Запуск обработки...")
+        # Предпросмотр и анализ не должны работать одновременно.
+        self._stop_preview()
+
+        self.settings_widget.set_status(
+            "Запуск обработки..."
+        )
         self.settings_widget.set_seek_enabled(False)
 
         self.thread = ProcessingThread(
@@ -123,25 +229,49 @@ class MainWindow(QMainWindow):
 
         self.thread.start()
 
+    # === Перемотка ===
     def _on_seek(self, frame_index: int):
-        """Перемотка видео."""
+        """Передаёт перемотку активному потоку."""
+        if (
+            self.preview_thread is not None
+            and self.preview_thread.isRunning()
+        ):
+            self.preview_thread.seek(frame_index)
+            return
+
         if self.thread and self.thread.isRunning():
-            print(f"[MainWindow] Seek to frame {frame_index}")
             self.thread.seek(frame_index)
 
+    # === Остановка анализа ===
     def stop_processing(self):
         if self.thread and self.thread.isRunning():
-            self.settings_widget.set_status("Остановка...")
+            self.settings_widget.set_status(
+                "Остановка анализа..."
+            )
             self.thread.stop()
 
     def on_finished(self):
         self.settings_widget.set_status(
-            "Готово. Тепловая карта сохранена в data/output/"
+            "Обработка завершена. "
+            "Тепловая карта: data/output/heatmap.jpg"
         )
+
         self.settings_widget.start_btn.setEnabled(True)
         self.settings_widget.stop_btn.setEnabled(False)
-        self.settings_widget._set_source_controls_enabled(True)
+
+        self.settings_widget._set_source_controls_enabled(
+            True
+        )
+
+        self.settings_widget.play_btn.setEnabled(
+            self.settings_widget.source_type_combo.currentData()
+            == "file"
+        )
 
     def closeEvent(self, event):
-        self.stop_processing()
+        self._stop_preview()
+
+        if self.thread and self.thread.isRunning():
+            self.stop_processing()
+
         event.accept()
