@@ -160,7 +160,7 @@ class SettingsWidget(QWidget):
 
         self.conf_spin = self._add_spin(
             params_layout,
-            "Confidence:",
+            "Уверенность:",
             0.1,
             1.0,
             0.5,
@@ -169,7 +169,7 @@ class SettingsWidget(QWidget):
 
         self.alpha_spin = self._add_spin(
             params_layout,
-            "Alpha (наложение):",
+            "Наложение:",
             0.1,
             1.0,
             0.5,
