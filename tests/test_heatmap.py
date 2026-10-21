@@ -5,7 +5,6 @@ import pytest
 from src.heatmap.generator import HeatmapGenerator
 from src.heatmap.renderer import HeatmapRenderer
 
-
 # ==================== HeatmapGenerator ====================
 
 def test_generator_initialization():
