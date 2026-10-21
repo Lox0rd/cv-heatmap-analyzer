@@ -1,5 +1,8 @@
-# src/gui/main_window.py
+
+from pathlib import Path
+
 from PyQt6.QtWidgets import (
+    QApplication,
     QMainWindow,
     QWidget,
     QHBoxLayout,
@@ -14,14 +17,36 @@ from src.gui.processing_thread import ProcessingThread
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
+
         self.setWindowTitle("CV Heatmap Analyzer")
         self.resize(1200, 700)
 
         self.thread = None
+
+        self._load_styles()
         self._init_ui()
+
+    def _load_styles(self):
+        """Загружает стили из внешнего QSS-файла."""
+        style_path = (
+            Path(__file__).resolve().parents[2]
+            / "resources"
+            / "styles"
+            / "style.qss"
+        )
+
+        app = QApplication.instance()
+
+        if app is not None and style_path.is_file():
+            app.setStyleSheet(
+                style_path.read_text(encoding="utf-8")
+            )
+        else:
+            print(f"[WARNING] Файл стилей не найден: {style_path}")
 
     def _init_ui(self):
         central_widget = QWidget()
+        central_widget.setObjectName("centralWidget")
         self.setCentralWidget(central_widget)
 
         main_layout = QHBoxLayout(central_widget)
@@ -32,69 +57,29 @@ class MainWindow(QMainWindow):
         left_layout.setSpacing(5)
 
         self.video_widget = VideoWidget()
-        left_layout.addWidget(
-            self.video_widget,
-            stretch=1
-        )
+        left_layout.addWidget(self.video_widget, stretch=1)
 
         self.settings_widget = SettingsWidget()
 
-        # Переносим ползунок из правой панели под видео
+        # Ползунок перемотки находится под видео.
         left_layout.addWidget(
             self.settings_widget.seek_group,
-            stretch=0
+            stretch=0,
         )
 
-        main_layout.addLayout(
-            left_layout,
-            stretch=3
+        main_layout.addLayout(left_layout, stretch=3)
+        main_layout.addWidget(self.settings_widget, stretch=1)
+
+        # Подключение сигналов.
+        self.settings_widget.start_requested.connect(
+            self.start_processing
         )
-        main_layout.addWidget(
-            self.settings_widget,
-            stretch=1
+        self.settings_widget.stop_requested.connect(
+            self.stop_processing
         )
-
-        # Подключение сигналов
-        self.settings_widget.start_requested.connect(self.start_processing)
-        self.settings_widget.stop_requested.connect(self.stop_processing)
-        self.settings_widget.seek_requested.connect(self._on_seek)
-
-        self.setStyleSheet("""
-            /* Белый цвет текста для основных элементов */
-            QLabel, QCheckBox, QSpinBox, QDoubleSpinBox, QComboBox, QLineEdit, QGroupBox {
-                color: #ffffff;
-            }
-
-            /* Темный фон для полей ввода, чтобы белый текст был виден */
-            QLineEdit, QComboBox, QSpinBox, QDoubleSpinBox {
-                background-color: #2d2d2d;
-                border: 1px solid #555555;
-                border-radius: 4px;
-                padding: 4px;
-            }
-
-            /* Белый цвет заголовков групп (Источник, Параметры и т.д.) */
-            QGroupBox::title {
-                color: #ffffff;
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px;
-            }
-
-            /* Выпадающий список (чтобы стрелочка и фон были нормальными) */
-            QComboBox::drop-down {
-                border: none;
-            }
-            QComboBox::down-arrow {
-                image: none;
-                border-left: 5px solid transparent;
-                border-right: 5px solid transparent;
-                border-top: 5px solid #ffffff;
-                margin-right: 5px;
-            }
-        """)
-
-        central_widget.setStyleSheet("background-color: #181A1F;")  # Темно-серый фон
+        self.settings_widget.seek_requested.connect(
+            self._on_seek
+        )
 
     def start_processing(
         self,
@@ -119,15 +104,21 @@ class MainWindow(QMainWindow):
             show_heatmap=show_heatmap,
         )
 
-        self.thread.frame_ready.connect(self.video_widget.update_frame)
-        self.thread.status_update.connect(self.settings_widget.set_status)
+        self.thread.frame_ready.connect(
+            self.video_widget.update_frame
+        )
+        self.thread.status_update.connect(
+            self.settings_widget.set_status
+        )
         self.thread.frame_position_changed.connect(
             self.settings_widget.set_current_frame
         )
         self.thread.total_frames_changed.connect(
             self.settings_widget.set_total_frames
         )
-        self.thread.is_file_source.connect(self.settings_widget.set_seek_enabled)
+        self.thread.is_file_source.connect(
+            self.settings_widget.set_seek_enabled
+        )
         self.thread.finished.connect(self.on_finished)
 
         self.thread.start()
