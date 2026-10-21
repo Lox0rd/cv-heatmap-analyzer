@@ -180,20 +180,46 @@ def test_set_frame_position_for_camera():
             processor.release()
 
 
+
 def test_read_single_frame_failed(monkeypatch):
     processor = VideoProcessor("tests/data/test.mp4")
 
-    class FakeCapture:
-        def read(self):
-            return False, None
-
-        def release(self):
-            pass
-
-    monkeypatch.setattr(processor, "capture", FakeCapture())
-
     try:
-        result = processor.read_single_frame()
+        # Останавливаем фоновое чтение.
+        processor.running = False
+        processor.thread.join(timeout=2)
+
+        # Проверяем, что поток действительно завершился.
+        assert not processor.thread.is_alive()
+
+        # Убираем кадры, которые могли остаться в очереди.
+        while not processor.q.empty():
+            try:
+                processor.q.get_nowait()
+            except queue.Empty:
+                break
+
+        # Подменяем захват видео.
+        class FakeCapture:
+            def isOpened(self):
+                return True
+
+            def read(self):
+                return False, None
+
+            def release(self):
+                pass
+
+        monkeypatch.setattr(processor, "capture", FakeCapture())
+
+        # Очередь пуста, поэтому метод должен вернуть None.
+        result = processor.read_single_frame(timeout=0.05)
+
         assert result is None
+
     finally:
-        processor.release()
+        # Освобождаем видеозахват и завершаем поток,
+        # если он ещё работает.
+        processor.running = False
+        processor.thread.join(timeout=2)
+        processor.capture.release()

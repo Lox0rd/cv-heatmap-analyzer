@@ -1,5 +1,6 @@
-
 import os
+import queue
+import threading
 import time
 
 import cv2
@@ -9,7 +10,23 @@ class VideoProcessor:
     """Обработка видеофайлов, локальных камер, RTSP и HTTP-потоков."""
 
     MAX_FAILURES = 30
-
+    
+    @staticmethod
+    def open_source(sources: list, buffer_size: int = 1):
+        last_error = None
+        
+        for source in sources:
+            try:
+                print(f"[INFO] Проверка источника: {source}")
+                return VideoProcessor(source, buffer_size)
+            except ValueError as e:
+                print(f"[WARN] Пропуск: {e}")
+                last_error = e
+                
+        # Если ни один источник не сработал
+        raise RuntimeError(f"Не удалось открыть ни один из источников. Ошибка: {
+            last_error}")
+        
     def __init__(self, video_source, buffer_size: int = 1):
         self.video_source = video_source
         self.source_type = self._detect_source_type(video_source)
@@ -18,6 +35,7 @@ class VideoProcessor:
         self.buffer_size = buffer_size
         self.consecutive_failures = 0
 
+        # 1. Сначала открываем камеру
         self.capture = self._open_capture()
 
         if not self.capture.isOpened():
@@ -25,6 +43,16 @@ class VideoProcessor:
             raise ValueError(
                 f"Не удалось открыть источник: {video_source}"
             )
+
+        # 2. Инициализируем многопоточность
+        self.q = queue.Queue(maxsize=2)
+        self.running = True
+        self.capture_lock = threading.Lock()
+        self.thread = threading.Thread(
+            target=self._reader_worker, 
+            daemon=True
+        )
+        self.thread.start()
 
     def _detect_source_type(self, source) -> str:
         """Определяет тип источника видео."""
@@ -53,8 +81,71 @@ class VideoProcessor:
                 cv2.CAP_PROP_BUFFERSIZE,
                 self.buffer_size
             )
+            # Дополнительно для низкой задержки FFmpeg
+            capture.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000)
+            capture.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 5000)
 
         return capture
+
+        
+    def _reader_worker(self):
+        """Фоновый поток чтения кадров."""
+        while self.running:
+            # Чтение кадра и помещение в очередь защищены
+            # одной блокировкой, чтобы перемотка не конфликтовала с чтением.
+            with self.capture_lock:
+                try:
+                    result = self.capture.read()
+
+                    if not isinstance(result, tuple) or len(result) != 2:
+                        self.consecutive_failures += 1
+                        if self.consecutive_failures >= self.MAX_FAILURES:
+                            break
+                        continue
+
+                    success, frame = result
+
+                except Exception:
+                    self.consecutive_failures += 1
+                    if self.consecutive_failures >= self.MAX_FAILURES:
+                        break
+                    continue
+
+                if success:
+                    self.consecutive_failures = 0
+
+                    if self.source_type == "file":
+                        # Не теряем кадры локального видео.
+                        while self.running:
+                            try:
+                                self.q.put(frame, timeout=0.1)
+                                break
+                            except queue.Full:
+                                continue
+                    else:
+                        # Для потоков оставляем только свежие кадры.
+                        try:
+                            if self.q.full():
+                                self.q.get_nowait()
+
+                            self.q.put_nowait(frame)
+                        except queue.Empty:
+                            pass
+                        except queue.Full:
+                            pass
+
+            if not success:
+                if self.source_type in ("rtsp", "http_stream"):
+                    self.consecutive_failures += 1
+
+                    if self.consecutive_failures >= self.MAX_FAILURES:
+                        self._reconnect()
+                else:
+                    # Локальный файл закончился.
+                    break
+
+                time.sleep(0.1)
+
 
     def _reconnect(self) -> bool:
         """Пытается заново подключиться к сетевому потоку."""
@@ -64,30 +155,14 @@ class VideoProcessor:
         time.sleep(1)
 
         self.capture = self._open_capture()
-        self.consecutive_failures = 0
 
         if self.capture.isOpened():
+            self.consecutive_failures = 0
             print(f"[{self.source_type.upper()}] Подключение восстановлено")
             return True
 
         print(f"[{self.source_type.upper()}] Не удалось подключиться")
         return False
-
-    def _read_frame(self):
-        """Читает кадр и обрабатывает потерю соединения."""
-        success, frame = self.capture.read()
-
-        if success:
-            self.consecutive_failures = 0
-            return frame
-
-        if self.source_type in ("rtsp", "http_stream"):
-            self.consecutive_failures += 1
-
-            if self.consecutive_failures >= self.MAX_FAILURES:
-                self._reconnect()
-
-        return None
 
     def get_info(self) -> dict:
         """Возвращает информацию об источнике видео."""
@@ -106,9 +181,9 @@ class VideoProcessor:
             "source_type": self.source_type,
             "source_value": str(self.video_source),
             "is_stream": is_stream,
-            "width": width,
-            "height": height,
-            "fps": fps,
+            "width": width if width > 0 else 1920,
+            "height": height if height > 0 else 1080,
+            "fps": fps if fps > 0 else 30.0,
             "frame_count": None,
             "duration": None,
         }
@@ -119,48 +194,87 @@ class VideoProcessor:
             )
 
             info["frame_count"] = frame_count
-            info["duration"] = frame_count / fps if fps > 0 else 0
+            info["duration"] = frame_count / info["fps"] if info["fps"] > 0 else 0
 
         return info
 
     def read_frames(self, skip_frames: int = 0):
-        """Генератор кадров с поддержкой сетевых переподключений."""
+        """Генератор кадров, который берет данные из многопоточной очереди."""
         if skip_frames < 0:
             raise ValueError("skip_frames не может быть отрицательным")
 
         frame_index = 0
 
-        while True:
-            frame = self._read_frame()
+        while self.running:
+            try:
+                # Ждем кадр из очереди с таймаутом, чтобы цикл не завис намертво
+                frame = self.q.get(timeout=2.0)
+            except queue.Empty:
+                if self.source_type in ("rtsp", "http_stream"):
+                    print("[WARNING] Очередь пуста, ожидание восстановления потока...")
+                    continue
+                else:
+                    break
 
             if frame is None:
-                if self.source_type in ("rtsp", "http_stream"):
-                    continue
-
-                break
+                continue
 
             if frame_index % (skip_frames + 1) == 0:
                 yield frame
 
             frame_index += 1
 
-    def read_single_frame(self):
-        """Читает один кадр. Если чтение не удалось, возвращает None."""
-        return self._read_frame()
+        
+    def read_single_frame(self, timeout: float = 1.0):
+        """Возвращает один кадр из очереди.
+
+        Ожидает кадр не дольше timeout секунд.
+        Если кадр не поступил за это время, возвращает None.
+        """
+        try:
+            return self.q.get(timeout=timeout)
+        except queue.Empty:
+            return None
+
+
 
     def set_frame_position(self, frame_index: int):
-        """Устанавливает позицию в видеофайле."""
+        """Перематывает локальный видеофайл на указанный кадр."""
         if frame_index < 0:
-            raise ValueError("Номер кадра не может быть отрицательным")
+            raise ValueError(
+                "Номер кадра не может быть отрицательным"
+            )
 
         if self.source_type != "file":
             raise ValueError(
-                "Перемещение по кадрам доступно только для видеофайлов"
+                "Перемотка доступна только для видеофайлов"
             )
 
-        self.capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+        with self.capture_lock:
+            # Удаляем кадры, прочитанные до перемотки.
+            while True:
+                try:
+                    self.q.get_nowait()
+                except queue.Empty:
+                    break
+
+            # Перемещаем указатель чтения.
+            success = self.capture.set(
+                cv2.CAP_PROP_POS_FRAMES,
+                frame_index
+            )
+
+            if not success:
+                raise RuntimeError(
+                    f"Не удалось перейти к кадру {frame_index}"
+                )
+
 
     def get_current_frame_index(self) -> int:
+        """Возвращает текущую позицию указателя чтения (актуально для файлов)."""
+        if self.source_type != "file":
+            return 0
+            
         return int(self.capture.get(cv2.CAP_PROP_POS_FRAMES))
 
     def resize_frame(self, frame, width: int, height: int):
@@ -270,5 +384,18 @@ class VideoProcessor:
         return writer
 
     def release(self):
-        self.capture.release()
+        self.running = False
+        
+        if self.thread.is_alive():
+            self.thread.join(timeout=2.0)
+            
+        while not self.q.empty():
+            try:
+                self.q.get_nowait()
+            except queue.Empty:
+                break
+                
+        if hasattr(self, 'capture') and self.capture.isOpened():
+            self.capture.release()
+            
         cv2.destroyAllWindows()
