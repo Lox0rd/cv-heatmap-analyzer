@@ -56,7 +56,9 @@ interest-heatmap/
 │       ├── main_window.py
 │       ├── video_widget.py
 │       ├── heatmap_widget.py
-│       └── settings_widget.py
+│       ├── settings_widget.py
+│       ├── preview_thread.py
+│       └── processing_thread.py
 │
 ├── models/
 │   └── .gitkeep
@@ -74,9 +76,15 @@ interest-heatmap/
 │   ├── test_heatmap.py
 │   ├── test_zones.py
 │   ├── test_analysis.py
-│   └── data/
-│      ├── .gitkeep
-│      └── test.mp4
+│   ├── test_tracker.py
+│   ├── data/
+│   │   ├── .gitkeep
+│   │   └── test.mp4
+│   │
+│   └── gui/
+│       ├── test_main_window.py
+│       ├── test_settings_widget.py
+│       └── test_preview_thread.py
 │
 ├── data/
 │   ├── .gitkeep
