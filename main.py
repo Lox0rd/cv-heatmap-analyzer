@@ -37,11 +37,12 @@
 
 from src.detection.detector import YOLODetector
 from src.detection.tracker import ObjectTracker
+from src.heatmap.generator import HeatmapGenerator
+from src.heatmap.renderer import HeatmapRenderer
 from src.video.video_processor import VideoProcessor
 
-
 def main():
-    video = VideoProcessor("data/input/VideoTests/cars and people.mp4")
+    video = VideoProcessor("data/input/VideoTests/cars1.mp4")
     # Для RTSP можно использовать:
     # video = VideoProcessor("rtsp://localhost:8554/test")
     # Для локальной камеры:
@@ -51,21 +52,23 @@ def main():
     tracker = ObjectTracker(detector)
     
     info = video.get_info()
-    writer = video.create_writer(
-            "data/output/result.mp4",
-            1280,
-            720,
-            info["fps"]
-        )
     print("Информация о видео:", info)
+    heatmap_generator = HeatmapGenerator(
+        width=info["width"],
+        height=info["height"],
+    )
+
+    heatmap_renderer = HeatmapRenderer()
 
     try:
         for frame in video.read_frames(skip_frames=0):
             detections = tracker.update(
                 frame,
-                objects=["person", "car"],
+                objects=None,
                 confidence=0.5,
             )
+
+            heatmap_generator.update(detections)
 
             for obj in detections:
                 x1, y1, x2, y2 = obj["bbox"]
@@ -97,13 +100,20 @@ def main():
                     font_scale=0.6,
                     thickness=2,
                 )
-            print("Кадр номер:", video.get_current_frame_index())
-            writer.write(frame)
+            display_frame = heatmap_renderer.overlay(
+                frame,
+                heatmap_generator.get_heatmap(),
+                alpha=0.5,
+            )
             # Показываем обработанный кадр
-            if not video.show(frame, window_name="YOLO Tracking"):
+            if not video.show(display_frame, window_name="YOLO Tracking"):
                 break
 
     finally:
+        heatmap_renderer.save(
+            heatmap_generator.get_heatmap(),
+            "data/output/heatmap.jpg",
+        )
         video.release()
 
 

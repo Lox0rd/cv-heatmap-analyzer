@@ -17,7 +17,7 @@ class YOLODetector:
 
     def detect(self, frame, objects=None, confidence=0.5):
         if objects is None:
-            objects = ["person", "car"]
+            objects = ["person", "car", "bicycle", "motorcycle", "bus", "truck"]
 
         class_ids = [
             self.CLASSES[name]
