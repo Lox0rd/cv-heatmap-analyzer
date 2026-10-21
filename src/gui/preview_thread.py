@@ -4,6 +4,8 @@ import cv2
 import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 
+from src.config.settings import VIDEO_FALLBACK_FPS
+
 
 class VideoPreviewThread(QThread):
     frame_ready = pyqtSignal(np.ndarray)
@@ -38,7 +40,7 @@ class VideoPreviewThread(QThread):
 
             fps = capture.get(cv2.CAP_PROP_FPS)
             if fps <= 0:
-                fps = 30.0
+                fps = VIDEO_FALLBACK_FPS
 
             total_frames = int(
                 capture.get(cv2.CAP_PROP_FRAME_COUNT)

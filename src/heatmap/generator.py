@@ -2,9 +2,11 @@
 import cv2
 import numpy as np
 
+from src.config.settings import HEATMAP_DECAY, HEATMAP_POINT_RADIUS
+
 
 class HeatmapGenerator:
-    def __init__(self, width: int, height: int, decay: float = 0.995):
+    def __init__(self, width: int, height: int, decay: float = HEATMAP_DECAY):
         """
         :param width: Ширина кадра
         :param height: Высота кадра
@@ -39,8 +41,13 @@ class HeatmapGenerator:
 
         # Быстрое добавление значений
         for x, y in zip(valid_x, valid_y):
-            cv2.circle(self.heatmap, (int(x), int(y)), radius=10, color=1.0, 
-                       thickness=-1)
+            cv2.circle(
+                self.heatmap,
+                (int(x), int(y)),
+                radius=HEATMAP_POINT_RADIUS,
+                color=1.0,
+                thickness=-1,
+            )
 
     def apply_decay(self):
         """Затухание тепловой карты (вызывать каждый кадр)."""

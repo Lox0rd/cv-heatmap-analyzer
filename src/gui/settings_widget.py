@@ -17,6 +17,15 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.config.settings import (
+    DEFAULT_CAMERA_INDEX,
+    DEFAULT_SKIP_FRAMES,
+    DEFAULT_VIDEO_SOURCE,
+    DETECTION_CONFIDENCE,
+    HEATMAP_ALPHA,
+    HEATMAP_COLORMAP_NAME,
+)
+
 
 class SettingsWidget(QWidget):
     start_requested = pyqtSignal(
@@ -57,7 +66,7 @@ class SettingsWidget(QWidget):
         file_row = QHBoxLayout()
 
         self.source_input = QLineEdit(
-            "data/input/VideoTests/cars1.mp4"
+            DEFAULT_VIDEO_SOURCE
         )
         self.source_input.setPlaceholderText(
             "Путь к видеофайлу"
@@ -100,7 +109,7 @@ class SettingsWidget(QWidget):
 
         self.camera_index = QSpinBox()
         self.camera_index.setRange(0, 20)
-        self.camera_index.setValue(0)
+        self.camera_index.setValue(DEFAULT_CAMERA_INDEX)
         self.camera_index.setToolTip(
             "0 — камера по умолчанию, "
             "1 — следующая камера и т. д."
@@ -163,7 +172,7 @@ class SettingsWidget(QWidget):
             "Уверенность:",
             0.1,
             1.0,
-            0.5,
+            DETECTION_CONFIDENCE,
             0.05,
         )
 
@@ -172,7 +181,7 @@ class SettingsWidget(QWidget):
             "Наложение:",
             0.1,
             1.0,
-            0.5,
+            HEATMAP_ALPHA,
             0.1,
         )
 
@@ -181,7 +190,7 @@ class SettingsWidget(QWidget):
             "Пропуск кадров:",
             0,
             10,
-            0,
+            DEFAULT_SKIP_FRAMES,
             1,
         )
 
@@ -422,7 +431,7 @@ class SettingsWidget(QWidget):
             self.conf_spin.value(),
             self.alpha_spin.value(),
             self.skip_spin.value(),
-            "Jet",
+            HEATMAP_COLORMAP_NAME,
             self.cb_detections.isChecked(),
             self.cb_heatmap.isChecked(),
         )

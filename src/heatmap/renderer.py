@@ -2,12 +2,17 @@
 import cv2
 import numpy as np
 
+from src.config.settings import HEATMAP_ALPHA, HEATMAP_BLUR_SIGMA
+
 
 class HeatmapRenderer:
     def render(self, heatmap, colormap=cv2.COLORMAP_JET):
         """Преобразует матрицу в цветную тепловую карту."""
         blurred = cv2.GaussianBlur(
-            heatmap, (0, 0), sigmaX=15, sigmaY=15,
+            heatmap,
+            (0, 0),
+            sigmaX=HEATMAP_BLUR_SIGMA,
+            sigmaY=HEATMAP_BLUR_SIGMA,
         )
 
         maximum = blurred.max()
@@ -19,7 +24,7 @@ class HeatmapRenderer:
 
         return cv2.applyColorMap(normalized, colormap)
 
-    def overlay(self, frame, heatmap, alpha=0.5, colormap=cv2.COLORMAP_JET):
+    def overlay(self, frame, heatmap, alpha=HEATMAP_ALPHA, colormap=cv2.COLORMAP_JET):
         """Накладывает тепловую карту на кадр."""
         heatmap_image = self.render(heatmap, colormap)
 
