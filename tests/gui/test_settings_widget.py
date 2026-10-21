@@ -1,7 +1,5 @@
 
 import pytest
-
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMessageBox
 
 from src.gui.settings_widget import SettingsWidget

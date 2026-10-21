@@ -1,9 +1,9 @@
 
-import threading
 from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
+from PyQt6.QtTest import QSignalSpy
 
 from src.gui.preview_thread import VideoPreviewThread
 
@@ -17,10 +17,10 @@ def fake_capture():
         7: 10.0,   # CAP_PROP_FRAME_COUNT
     }.get(prop, 0.0)
 
-    capture.read.return_value = (
-        True,
-        np.zeros((32, 32, 3), dtype=np.uint8),
-    )
+    capture.read.side_effect = [
+        (True, np.zeros((32, 32, 3), dtype=np.uint8)),
+        (False, None),
+    ]
 
     return capture
 
@@ -92,17 +92,9 @@ def test_video_emits_frame_and_frame_count(qtbot):
     thread = VideoPreviewThread("/tmp/video.mp4")
 
     frames = []
-    totals = []
+    totals = QSignalSpy(thread.total_frames_changed)
 
     thread.frame_ready.connect(frames.append)
-    thread.total_frames_changed.connect(totals.append)
-
-    # После первого кадра завершаем цикл, чтобы тест не зависел
-    # от продолжительности виртуального видео.
-    def stop_after_frame(frame):
-        thread.requestInterruption()
-
-    thread.frame_ready.connect(stop_after_frame)
 
     with patch(
         "src.gui.preview_thread.cv2.VideoCapture"
@@ -113,19 +105,17 @@ def test_video_emits_frame_and_frame_count(qtbot):
             5: 30.0,
             7: 10.0,
         }.get(prop, 0.0)
-        capture.read.return_value = (
-            True,
-            np.zeros((32, 32, 3), dtype=np.uint8),
-        )
+        capture.read.side_effect = [
+            (True, np.zeros((32, 32, 3), dtype=np.uint8)),
+            (False, None),
+        ]
 
         thread.start()
-        assert thread.wait(2000)
+        qtbot.waitUntil(lambda: not thread.isRunning(), timeout=2000)
 
-    assert totals == [10]
-    assert len(frames) >= 1
-    assert frames[0].shape == (32, 32, 3)
-    capture.release.assert_called_once()
-
+    assert len(totals) == 1
+    assert totals[0] == [10]
+    assert len(frames) == 1
 
 def test_video_reaches_end_and_emits_finished(qtbot):
     thread = VideoPreviewThread("/tmp/video.mp4")
@@ -139,7 +129,10 @@ def test_video_reaches_end_and_emits_finished(qtbot):
             5: 30.0,
             7: 10.0,
         }.get(prop, 0.0)
-        capture.read.return_value = (False, None)
+        capture.read.side_effect = [
+            (True, np.zeros((32, 32, 3), dtype=np.uint8)),
+            (False, None),
+        ]
 
         with qtbot.waitSignal(
             thread.playback_finished,

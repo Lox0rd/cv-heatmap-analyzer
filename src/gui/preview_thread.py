@@ -22,10 +22,14 @@ class VideoPreviewThread(QThread):
         self._playing = True
         self._pending_seek = None
 
+    
     def run(self):
-        capture = cv2.VideoCapture(self.video_path)
+        capture = None
 
         try:
+            # Создаём захват внутри try, чтобы перехватить исключения OpenCV.
+            capture = cv2.VideoCapture(self.video_path)
+
             if not capture.isOpened():
                 self.error_occurred.emit(
                     f"Не удалось открыть видео: {self.video_path}"
@@ -85,9 +89,7 @@ class VideoPreviewThread(QThread):
                                 )
                             ) - 1,
                         )
-                        self.position_changed.emit(
-                            actual_position
-                        )
+                        self.position_changed.emit(actual_position)
 
                     continue
 
@@ -122,7 +124,11 @@ class VideoPreviewThread(QThread):
             )
 
         finally:
-            capture.release()
+            if capture is not None:
+                try:
+                    capture.release()
+                except Exception:
+                    pass
 
     def toggle_playback(self):
         with self._lock:

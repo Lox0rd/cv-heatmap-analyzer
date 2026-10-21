@@ -94,7 +94,22 @@ class VideoProcessor:
             # Чтение кадра и помещение в очередь защищены
             # одной блокировкой, чтобы перемотка не конфликтовала с чтением.
             with self.capture_lock:
-                success, frame = self.capture.read()
+                try:
+                    result = self.capture.read()
+
+                    if not isinstance(result, tuple) or len(result) != 2:
+                        self.consecutive_failures += 1
+                        if self.consecutive_failures >= self.MAX_FAILURES:
+                            break
+                        continue
+
+                    success, frame = result
+
+                except Exception:
+                    self.consecutive_failures += 1
+                    if self.consecutive_failures >= self.MAX_FAILURES:
+                        break
+                    continue
 
                 if success:
                     self.consecutive_failures = 0
@@ -209,12 +224,18 @@ class VideoProcessor:
 
             frame_index += 1
 
-    def read_single_frame(self):
-        """Читает один кадр из очереди. Если очередь пуста, возвращает None."""
+        
+    def read_single_frame(self, timeout: float = 1.0):
+        """Возвращает один кадр из очереди.
+
+        Ожидает кадр не дольше timeout секунд.
+        Если кадр не поступил за это время, возвращает None.
+        """
         try:
-            return self.q.get_nowait()
+            return self.q.get(timeout=timeout)
         except queue.Empty:
             return None
+
 
 
     def set_frame_position(self, frame_index: int):
