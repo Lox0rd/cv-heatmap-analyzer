@@ -1,5 +1,5 @@
-from src.detection.detector import YOLODetector
 from src.config.settings import DETECTION_CONFIDENCE, TRACKED_OBJECTS
+from src.detection.detector import YOLODetector
 
 
 class ObjectTracker:
