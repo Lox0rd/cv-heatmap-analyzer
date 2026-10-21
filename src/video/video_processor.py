@@ -1,7 +1,7 @@
 import os
-import time
-import threading
 import queue
+import threading
+import time
 
 import cv2
 
@@ -24,7 +24,8 @@ class VideoProcessor:
                 last_error = e
                 
         # Если ни один источник не сработал
-        raise RuntimeError(f"Не удалось открыть ни один из источников. Последняя ошибка: {last_error}")
+        raise RuntimeError(f"Не удалось открыть ни один из источников. Ошибка: {
+            last_error}")
         
     def __init__(self, video_source, buffer_size: int = 1):
         self.video_source = video_source

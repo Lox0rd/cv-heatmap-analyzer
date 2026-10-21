@@ -1,12 +1,14 @@
 # main.py
-import sys
 import os
+import sys
+
 from PyQt6.QtWidgets import QApplication
 
 # Добавляем корень проекта в путь, чтобы импорты src.* работали
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from src.gui.main_window import MainWindow
+
 
 def main():
     # Создаем папку для вывода, если её нет

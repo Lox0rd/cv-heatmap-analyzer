@@ -8,7 +8,8 @@ class HeatmapGenerator:
         """
         :param width: Ширина кадра
         :param height: Высота кадра
-        :param decay: Коэффициент затухания (0.999 = медленное затухание, 0.95 = быстрое).
+        :param decay: Коэффициент затухания (0.999 = медленное 
+        затухание, 0.95 = быстрое).
                       Значение 1.0 отключает затухание.
         """
         self.width = width
@@ -38,7 +39,8 @@ class HeatmapGenerator:
 
         # Быстрое добавление значений
         for x, y in zip(valid_x, valid_y):
-            cv2.circle(self.heatmap, (int(x), int(y)), radius=10, color=1.0, thickness=-1)
+            cv2.circle(self.heatmap, (int(x), int(y)), radius=10, color=1.0, 
+                       thickness=-1)
 
     def apply_decay(self):
         """Затухание тепловой карты (вызывать каждый кадр)."""

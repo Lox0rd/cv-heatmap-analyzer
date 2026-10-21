@@ -1,15 +1,15 @@
 # src/gui/processing_thread.py
 import time
+
 import cv2
 import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 
-from src.video.video_processor import VideoProcessor
 from src.detection.detector import YOLODetector
 from src.detection.tracker import ObjectTracker
 from src.heatmap.generator import HeatmapGenerator
 from src.heatmap.renderer import HeatmapRenderer
-
+from src.video.video_processor import VideoProcessor
 
 COLORMAPS = {
     "Jet": cv2.COLORMAP_JET,
@@ -129,7 +129,8 @@ class ProcessingThread(QThread):
                 if self.show_detections:
                     for obj in detections:
                         x1, y1, x2, y2 = obj["bbox"]
-                        text = f"{obj['label']} ID:{obj['track_id']} {obj['confidence']:.2f}"
+                        text = f"{obj['label']} ID:{obj['track_id']} {obj['confidence']
+                                                                      :.2f}"
                         self.video.draw_rectangle(
                             frame, x1, y1, x2, y2,
                             color=(0, 255, 0), thickness=2
@@ -166,7 +167,8 @@ class ProcessingThread(QThread):
                 "data/output/heatmap.jpg",
                 colormap=colormap,
             )
-            self.status_update.emit("✓ Тепловая карта сохранена в data/output/heatmap.jpg")
+            self.status_update.emit("✓ Тепловая карта сохранена в data/output/" \
+            "heatmap.jpg")
             self.finished.emit()
 
         except Exception as e:

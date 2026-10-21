@@ -3,16 +3,16 @@ from pathlib import Path
 
 from PyQt6.QtWidgets import (
     QApplication,
-    QMainWindow,
-    QWidget,
     QHBoxLayout,
+    QMainWindow,
     QVBoxLayout,
+    QWidget,
 )
 
-from src.gui.video_widget import VideoWidget
-from src.gui.settings_widget import SettingsWidget
-from src.gui.processing_thread import ProcessingThread
 from src.gui.preview_thread import VideoPreviewThread
+from src.gui.processing_thread import ProcessingThread
+from src.gui.settings_widget import SettingsWidget
+from src.gui.video_widget import VideoWidget
 
 
 class MainWindow(QMainWindow):
