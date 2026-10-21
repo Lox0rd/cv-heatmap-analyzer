@@ -11,7 +11,9 @@ from PyQt6.QtWidgets import (
     QSpinBox,
     QFileDialog,
     QSlider,
+    QComboBox,
     QCheckBox,
+    QMessageBox,
 )
 from PyQt6.QtCore import pyqtSignal, Qt
 
@@ -28,26 +30,83 @@ class SettingsWidget(QWidget):
 
         layout = QVBoxLayout(self)
 
-        # Источник видео.
+        # === Источник видео ===
         source_group = QGroupBox("Источник видео")
         source_layout = QVBoxLayout()
+
+        # Выбор типа источника.
+        self.source_type_combo = QComboBox()
+        self.source_type_combo.addItem("Видео из файла", "file")
+        self.source_type_combo.addItem("RTSP-камера", "rtsp")
+        self.source_type_combo.addItem("Веб-камера", "camera")
+
+        source_layout.addWidget(QLabel("Тип источника:"))
+        source_layout.addWidget(self.source_type_combo)
+
+        # === Выбор видеофайла ===
+        self.file_widget = QWidget()
+        file_layout = QVBoxLayout(self.file_widget)
+        file_layout.setContentsMargins(0, 0, 0, 0)
+
+        file_row = QHBoxLayout()
 
         self.source_input = QLineEdit(
             "data/input/VideoTests/cars1.mp4"
         )
-        source_layout.addWidget(self.source_input)
+        self.source_input.setPlaceholderText(
+            "Путь к видеофайлу"
+        )
 
-        btn_layout = QHBoxLayout()
+        self.browse_btn = QPushButton("Обзор...")
+        self.browse_btn.clicked.connect(self.browse_file)
 
-        browse_btn = QPushButton("Обзор...")
-        browse_btn.clicked.connect(self.browse_file)
-        btn_layout.addWidget(browse_btn)
+        file_row.addWidget(self.source_input, stretch=1)
+        file_row.addWidget(self.browse_btn)
 
-        source_layout.addLayout(btn_layout)
+        file_layout.addLayout(file_row)
+        source_layout.addWidget(self.file_widget)
+
+        # === RTSP-камера ===
+        self.rtsp_widget = QWidget()
+        rtsp_layout = QVBoxLayout(self.rtsp_widget)
+        rtsp_layout.setContentsMargins(0, 0, 0, 0)
+
+        rtsp_layout.addWidget(QLabel("Адрес RTSP-потока:"))
+
+        self.rtsp_input = QLineEdit()
+        self.rtsp_input.setPlaceholderText(
+            "rtsp://192.168.1.100:554/stream"
+        )
+
+        rtsp_layout.addWidget(self.rtsp_input)
+        source_layout.addWidget(self.rtsp_widget)
+
+        # === Веб-камера ===
+        self.camera_widget = QWidget()
+        camera_layout = QVBoxLayout(self.camera_widget)
+        camera_layout.setContentsMargins(0, 0, 0, 0)
+
+        camera_layout.addWidget(QLabel("Индекс веб-камеры:"))
+
+        self.camera_index = QSpinBox()
+        self.camera_index.setRange(0, 20)
+        self.camera_index.setValue(0)
+        self.camera_index.setToolTip(
+            "0 — камера по умолчанию, 1 — следующая камера и т. д."
+        )
+
+        camera_layout.addWidget(self.camera_index)
+        source_layout.addWidget(self.camera_widget)
+
         source_group.setLayout(source_layout)
         layout.addWidget(source_group)
 
-        # Ползунок перемотки видео.
+        self.source_type_combo.currentIndexChanged.connect(
+            self._on_source_type_changed
+        )
+        self._on_source_type_changed()
+
+        # === Перемотка видео ===
         self.seek_group = QGroupBox("Прокрутка видео")
         seek_layout = QVBoxLayout()
 
@@ -71,7 +130,7 @@ class SettingsWidget(QWidget):
 
         self._total_frames = 0
 
-        # Параметры обработки.
+        # === Параметры обработки ===
         params_group = QGroupBox("Параметры")
         params_layout = QVBoxLayout()
 
@@ -105,7 +164,7 @@ class SettingsWidget(QWidget):
         params_group.setLayout(params_layout)
         layout.addWidget(params_group)
 
-        # Настройки отображения.
+        # === Настройки отображения ===
         display_group = QGroupBox("Отображение")
         display_layout = QVBoxLayout()
 
@@ -124,7 +183,7 @@ class SettingsWidget(QWidget):
         display_group.setLayout(display_layout)
         layout.addWidget(display_group)
 
-        # Кнопки управления.
+        # === Кнопки управления ===
         control_layout = QHBoxLayout()
 
         self.start_btn = QPushButton("Старт")
@@ -140,14 +199,76 @@ class SettingsWidget(QWidget):
 
         layout.addLayout(control_layout)
 
-        # Статус обработки.
+        # === Статус ===
         self.status_label = QLabel("Готов к работе")
         self.status_label.setObjectName("statusLabel")
+        self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
 
         layout.addStretch()
 
-    # Вспомогательные методы.
+    # === Переключение типа источника ===
+    def _on_source_type_changed(self, index=None):
+        source_type = self.source_type_combo.currentData()
+
+        self.file_widget.setVisible(source_type == "file")
+        self.rtsp_widget.setVisible(source_type == "rtsp")
+        self.camera_widget.setVisible(source_type == "camera")
+
+        # Ползунок создаётся позже, поэтому проверяем его наличие.
+        if hasattr(self, "seek_slider"):
+            is_file = source_type == "file"
+            self.seek_slider.setEnabled(
+                is_file and self._total_frames > 0
+            )
+
+
+    def _get_selected_source(self):
+        """Возвращает источник в формате, ожидаемом VideoProcessor."""
+        source_type = self.source_type_combo.currentData()
+
+        if source_type == "file":
+            source = self.source_input.text().strip()
+
+            if not source:
+                raise ValueError("Выберите видеофайл.")
+
+            return source
+
+        if source_type == "rtsp":
+            source = self.rtsp_input.text().strip()
+
+            if not source:
+                raise ValueError("Введите адрес RTSP-камеры.")
+
+            if not source.lower().startswith(
+                ("rtsp://", "rtsps://")
+            ):
+                raise ValueError(
+                    "Адрес RTSP должен начинаться с rtsp:// или rtsps://."
+                )
+
+            return source
+
+        if source_type == "camera":
+            return self.camera_index.value()
+
+        raise ValueError("Неизвестный тип источника.")
+
+    # === Работа с файлами ===
+    def browse_file(self):
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Выберите видео",
+            "",
+            "Video Files (*.mp4 *.avi *.mov *.mkv *.webm);;"
+            "All Files (*)",
+        )
+
+        if file_path:
+            self.source_input.setText(file_path)
+
+    # === Вспомогательные методы создания параметров ===
     def _add_spin(
         self,
         parent_layout,
@@ -158,7 +279,6 @@ class SettingsWidget(QWidget):
         step,
     ):
         row = QHBoxLayout()
-
         row.addWidget(QLabel(text))
 
         spin = QDoubleSpinBox()
@@ -181,7 +301,6 @@ class SettingsWidget(QWidget):
         step,
     ):
         row = QHBoxLayout()
-
         row.addWidget(QLabel(text))
 
         spin = QSpinBox()
@@ -194,29 +313,20 @@ class SettingsWidget(QWidget):
 
         return spin
 
-    def browse_file(self):
-        file_path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Выберите видео",
-            "",
-            "Video Files (*.mp4 *.avi *.mov)",
-        )
-
-        if file_path:
-            self.source_input.setText(file_path)
-
-    # Обработчик ползунка.
+    # === Перемотка ===
     def _on_seek_changed(self, value):
         self.seek_label.setText(
             f"Кадр: {value} / {self._total_frames}"
         )
         self.seek_requested.emit(value)
 
-    # Методы взаимодействия с главным окном.
     def set_total_frames(self, total: int):
         self._total_frames = total
+
         self.seek_slider.setRange(0, max(0, total - 1))
         self.seek_label.setText(f"Кадр: 0 / {total}")
+
+        self._on_source_type_changed()
 
     def set_current_frame(self, frame_index: int):
         self.seek_slider.blockSignals(True)
@@ -228,18 +338,29 @@ class SettingsWidget(QWidget):
         )
 
     def set_seek_enabled(self, enabled: bool):
-        self.seek_slider.setEnabled(enabled)
+        # Перемотка не должна включаться для RTSP и веб-камер.
+        is_file = self.source_type_combo.currentData() == "file"
+
+        self.seek_slider.setEnabled(enabled and is_file)
 
         if not enabled:
             self.seek_slider.setRange(0, 0)
             self.seek_label.setText("Недоступно для потоков")
 
-    # Запуск и остановка обработки.
+    # === Запуск и остановка ===
     def _on_start(self):
-        sources = [self.source_input.text().strip()]
+        try:
+            source = self._get_selected_source()
+        except ValueError as error:
+            QMessageBox.warning(
+                self,
+                "Источник видео",
+                str(error),
+            )
+            return
 
         self.start_requested.emit(
-            sources,
+            [source],
             self.conf_spin.value(),
             self.alpha_spin.value(),
             self.skip_spin.value(),
@@ -250,14 +371,27 @@ class SettingsWidget(QWidget):
 
         self.start_btn.setEnabled(False)
         self.stop_btn.setEnabled(True)
+
+        self.source_type_combo.setEnabled(False)
         self.source_input.setEnabled(False)
+        self.browse_btn.setEnabled(False)
+        self.rtsp_input.setEnabled(False)
+        self.camera_index.setEnabled(False)
 
     def _on_stop(self):
         self.stop_requested.emit()
 
         self.start_btn.setEnabled(True)
         self.stop_btn.setEnabled(False)
-        self.source_input.setEnabled(True)
+
+        self._set_source_controls_enabled(True)
+
+    def _set_source_controls_enabled(self, enabled: bool):
+        self.source_type_combo.setEnabled(enabled)
+        self.source_input.setEnabled(enabled)
+        self.browse_btn.setEnabled(enabled)
+        self.rtsp_input.setEnabled(enabled)
+        self.camera_index.setEnabled(enabled)
 
     def set_status(self, text: str):
         self.status_label.setText(text)

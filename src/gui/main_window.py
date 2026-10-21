@@ -140,7 +140,7 @@ class MainWindow(QMainWindow):
         )
         self.settings_widget.start_btn.setEnabled(True)
         self.settings_widget.stop_btn.setEnabled(False)
-        self.settings_widget.source_input.setEnabled(True)
+        self.settings_widget._set_source_controls_enabled(True)
 
     def closeEvent(self, event):
         self.stop_processing()
