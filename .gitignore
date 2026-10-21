@@ -81,6 +81,7 @@ checkpoints/
 !tests/data/test.mp4
 *.avi
 *.mov
+!resources/forDocs/DemoProga.MOV
 *.mkv
 *.webm
 
