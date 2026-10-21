@@ -17,6 +17,15 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
+from src.config.settings import (
+    DEFAULT_CAMERA_INDEX,
+    DEFAULT_SKIP_FRAMES,
+    DEFAULT_VIDEO_SOURCE,
+    DETECTION_CONFIDENCE,
+    HEATMAP_ALPHA,
+    HEATMAP_COLORMAP_NAME,
+)
+
 
 class SettingsWidget(QWidget):
     start_requested = pyqtSignal(
@@ -57,7 +66,7 @@ class SettingsWidget(QWidget):
         file_row = QHBoxLayout()
 
         self.source_input = QLineEdit(
-            "data/input/VideoTests/cars1.mp4"
+            DEFAULT_VIDEO_SOURCE
         )
         self.source_input.setPlaceholderText(
             "Путь к видеофайлу"
@@ -100,7 +109,7 @@ class SettingsWidget(QWidget):
 
         self.camera_index = QSpinBox()
         self.camera_index.setRange(0, 20)
-        self.camera_index.setValue(0)
+        self.camera_index.setValue(DEFAULT_CAMERA_INDEX)
         self.camera_index.setToolTip(
             "0 — камера по умолчанию, "
             "1 — следующая камера и т. д."
@@ -152,6 +161,7 @@ class SettingsWidget(QWidget):
         layout.addWidget(self.seek_group)
 
         self._total_frames = 0
+        self._analysis_running = False
         self._on_source_type_changed()
 
         # === Параметры обработки ===
@@ -163,7 +173,7 @@ class SettingsWidget(QWidget):
             "Уверенность:",
             0.1,
             1.0,
-            0.5,
+            DETECTION_CONFIDENCE,
             0.05,
         )
 
@@ -172,7 +182,7 @@ class SettingsWidget(QWidget):
             "Наложение:",
             0.1,
             1.0,
-            0.5,
+            HEATMAP_ALPHA,
             0.1,
         )
 
@@ -181,7 +191,7 @@ class SettingsWidget(QWidget):
             "Пропуск кадров:",
             0,
             10,
-            0,
+            DEFAULT_SKIP_FRAMES,
             1,
         )
 
@@ -238,6 +248,9 @@ class SettingsWidget(QWidget):
         is_file = source_type == "file"
 
         self.file_widget.setVisible(is_file)
+        self.seek_group.setVisible(
+            is_file and not self._analysis_running
+        )
         self.rtsp_widget.setVisible(source_type == "rtsp")
         self.camera_widget.setVisible(
             source_type == "camera"
@@ -400,6 +413,13 @@ class SettingsWidget(QWidget):
                 "Недоступно для потоков"
             )
 
+    def set_analysis_running(self, running: bool):
+        self._analysis_running = running
+        self.seek_group.setVisible(
+            not running
+            and self.source_type_combo.currentData() == "file"
+        )
+
     def set_preview_playing(self, playing: bool):
         self.play_btn.setText(
             "Ⅱ Пауза" if playing else "▶ Play"
@@ -422,7 +442,7 @@ class SettingsWidget(QWidget):
             self.conf_spin.value(),
             self.alpha_spin.value(),
             self.skip_spin.value(),
-            "Jet",
+            HEATMAP_COLORMAP_NAME,
             self.cb_detections.isChecked(),
             self.cb_heatmap.isChecked(),
         )

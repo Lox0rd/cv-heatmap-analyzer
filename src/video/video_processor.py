@@ -5,14 +5,22 @@ import time
 
 import cv2
 
+from src.config.settings import (
+    VIDEO_BUFFER_SIZE,
+    VIDEO_FALLBACK_FPS,
+    VIDEO_MAX_FAILURES,
+    VIDEO_QUEUE_SIZE,
+    VIDEO_READ_TIMEOUT_MS,
+)
+
 
 class VideoProcessor:
     """Обработка видеофайлов, локальных камер, RTSP и HTTP-потоков."""
 
-    MAX_FAILURES = 30
+    MAX_FAILURES = VIDEO_MAX_FAILURES
     
     @staticmethod
-    def open_source(sources: list, buffer_size: int = 1):
+    def open_source(sources: list, buffer_size: int = VIDEO_BUFFER_SIZE):
         last_error = None
         
         for source in sources:
@@ -27,7 +35,7 @@ class VideoProcessor:
         raise RuntimeError(f"Не удалось открыть ни один из источников. Ошибка: {
             last_error}")
         
-    def __init__(self, video_source, buffer_size: int = 1):
+    def __init__(self, video_source, buffer_size: int = VIDEO_BUFFER_SIZE):
         self.video_source = video_source
         self.source_type = self._detect_source_type(video_source)
         self.is_camera = self.source_type == "camera"
@@ -45,7 +53,7 @@ class VideoProcessor:
             )
 
         # 2. Инициализируем многопоточность
-        self.q = queue.Queue(maxsize=2)
+        self.q = queue.Queue(maxsize=VIDEO_QUEUE_SIZE)
         self.running = True
         self.capture_lock = threading.Lock()
         self.thread = threading.Thread(
@@ -82,8 +90,8 @@ class VideoProcessor:
                 self.buffer_size
             )
             # Дополнительно для низкой задержки FFmpeg
-            capture.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, 5000)
-            capture.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, 5000)
+            capture.set(cv2.CAP_PROP_OPEN_TIMEOUT_MSEC, VIDEO_READ_TIMEOUT_MS)
+            capture.set(cv2.CAP_PROP_READ_TIMEOUT_MSEC, VIDEO_READ_TIMEOUT_MS)
 
         return capture
 
@@ -183,7 +191,7 @@ class VideoProcessor:
             "is_stream": is_stream,
             "width": width if width > 0 else 1920,
             "height": height if height > 0 else 1080,
-            "fps": fps if fps > 0 else 30.0,
+            "fps": fps if fps > 0 else VIDEO_FALLBACK_FPS,
             "frame_count": None,
             "duration": None,
         }

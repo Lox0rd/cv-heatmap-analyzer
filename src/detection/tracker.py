@@ -1,3 +1,4 @@
+from src.config.settings import DETECTION_CONFIDENCE, TRACKED_OBJECTS
 from src.detection.detector import YOLODetector
 
 
@@ -5,9 +6,9 @@ class ObjectTracker:
     def __init__(self, detector=None):
         self.detector = detector or YOLODetector()
 
-    def update(self, frame, objects=None, confidence=0.5):
+    def update(self, frame, objects=None, confidence=DETECTION_CONFIDENCE):
         if objects is None:
-            objects = ["person", "car"]
+            objects = TRACKED_OBJECTS
 
         class_ids = [
             self.detector.CLASSES[name]

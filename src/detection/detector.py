@@ -1,5 +1,11 @@
 from ultralytics import YOLO
 
+from src.config.settings import (
+    DETECTED_OBJECTS,
+    DETECTION_CONFIDENCE,
+    YOLO_MODEL_PATH,
+)
+
 
 class YOLODetector:
     # Идентификаторы классов стандартной модели COCO
@@ -12,12 +18,12 @@ class YOLODetector:
         "truck": 7,
     }
 
-    def __init__(self, model_path="models/yolo26n.pt"):
+    def __init__(self, model_path=YOLO_MODEL_PATH):
         self.model = YOLO(model_path)
 
-    def detect(self, frame, objects=None, confidence=0.5):
+    def detect(self, frame, objects=None, confidence=DETECTION_CONFIDENCE):
         if objects is None:
-            objects = ["person", "car", "bicycle", "motorcycle", "bus", "truck"]
+            objects = DETECTED_OBJECTS
 
         class_ids = [
             self.CLASSES[name]
@@ -33,14 +39,9 @@ class YOLODetector:
         )
 
         detections = []
-
         for box in results[0].boxes:
-            x1, y1, x2, y2 = map(
-                int, box.xyxy[0].tolist()
-            )
-
+            x1, y1, x2, y2 = map(int, box.xyxy[0].tolist())
             class_id = int(box.cls.item())
-
             detections.append({
                 "label": results[0].names[class_id],
                 "class_id": class_id,
