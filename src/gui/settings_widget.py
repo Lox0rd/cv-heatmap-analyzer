@@ -161,6 +161,7 @@ class SettingsWidget(QWidget):
         layout.addWidget(self.seek_group)
 
         self._total_frames = 0
+        self._analysis_running = False
         self._on_source_type_changed()
 
         # === Параметры обработки ===
@@ -247,6 +248,9 @@ class SettingsWidget(QWidget):
         is_file = source_type == "file"
 
         self.file_widget.setVisible(is_file)
+        self.seek_group.setVisible(
+            is_file and not self._analysis_running
+        )
         self.rtsp_widget.setVisible(source_type == "rtsp")
         self.camera_widget.setVisible(
             source_type == "camera"
@@ -408,6 +412,13 @@ class SettingsWidget(QWidget):
             self.seek_label.setText(
                 "Недоступно для потоков"
             )
+
+    def set_analysis_running(self, running: bool):
+        self._analysis_running = running
+        self.seek_group.setVisible(
+            not running
+            and self.source_type_combo.currentData() == "file"
+        )
 
     def set_preview_playing(self, playing: bool):
         self.play_btn.setText(

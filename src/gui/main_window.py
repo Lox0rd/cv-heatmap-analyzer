@@ -194,6 +194,7 @@ class MainWindow(QMainWindow):
     ):
         # Предпросмотр и анализ не должны работать одновременно.
         self._stop_preview()
+        self.settings_widget.set_analysis_running(True)
 
         self.settings_widget.set_status(
             "Запуск обработки..."
@@ -251,6 +252,7 @@ class MainWindow(QMainWindow):
             self.thread.stop()
 
     def on_finished(self):
+        self.settings_widget.set_analysis_running(False)
         self.settings_widget.set_status(
             "Обработка завершена. "
             "Тепловая карта: data/output/heatmap.jpg"
