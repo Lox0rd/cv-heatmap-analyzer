@@ -41,6 +41,7 @@ from src.heatmap.generator import HeatmapGenerator
 from src.heatmap.renderer import HeatmapRenderer
 from src.video.video_processor import VideoProcessor
 
+
 def main():
     video = VideoProcessor("data/input/VideoTests/cars1.mp4")
     # Для RTSP можно использовать:
