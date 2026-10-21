@@ -46,6 +46,7 @@ class VideoProcessor:
         # 2. Инициализируем многопоточность
         self.q = queue.Queue(maxsize=2)
         self.running = True
+        self.capture_lock = threading.Lock()
         self.thread = threading.Thread(
             target=self._reader_worker, 
             daemon=True
@@ -85,38 +86,50 @@ class VideoProcessor:
 
         return capture
 
+        
     def _reader_worker(self):
-        """Фоновый поток: непрерывно читает кадры и кладет в очередь."""
+        """Фоновый поток чтения кадров."""
         while self.running:
-            success, frame = self.capture.read()
+            # Чтение кадра и помещение в очередь защищены
+            # одной блокировкой, чтобы перемотка не конфликтовала с чтением.
+            with self.capture_lock:
+                success, frame = self.capture.read()
 
-            if success:
-                self.consecutive_failures = 0
-                
-                if self.source_type == "file":
-                    # Для файлов: блокируем запись, чтобы не терять кадры при медленной обработке
-                    self.q.put(frame)
-                else:
-                    # Для потоков: дропаем старые кадры ради минимальной задержки (low latency)
-                    try:
-                        if self.q.full():
-                            self.q.get_nowait()
-                        self.q.put_nowait(frame)
-                    except queue.Empty:
-                        pass
-            else:
+                if success:
+                    self.consecutive_failures = 0
+
+                    if self.source_type == "file":
+                        # Не теряем кадры локального видео.
+                        while self.running:
+                            try:
+                                self.q.put(frame, timeout=0.1)
+                                break
+                            except queue.Full:
+                                continue
+                    else:
+                        # Для потоков оставляем только свежие кадры.
+                        try:
+                            if self.q.full():
+                                self.q.get_nowait()
+
+                            self.q.put_nowait(frame)
+                        except queue.Empty:
+                            pass
+                        except queue.Full:
+                            pass
+
+            if not success:
                 if self.source_type in ("rtsp", "http_stream"):
                     self.consecutive_failures += 1
 
                     if self.consecutive_failures >= self.MAX_FAILURES:
                         self._reconnect()
                 else:
-                    # Для файлов: если кадры кончились, выходим из потока
+                    # Локальный файл закончился.
                     break
-            
-            # Небольшая пауза, чтобы не грузить CPU на 100% при обрыве связи
-            if not success:
+
                 time.sleep(0.1)
+
 
     def _reconnect(self) -> bool:
         """Пытается заново подключиться к сетевому потоку."""
@@ -202,25 +215,38 @@ class VideoProcessor:
         except queue.Empty:
             return None
 
+
     def set_frame_position(self, frame_index: int):
-        """Устанавливает позицию в видеофайле."""
+        """Перематывает локальный видеофайл на указанный кадр."""
         if frame_index < 0:
-            raise ValueError("Номер кадра не может быть отрицательным")
+            raise ValueError(
+                "Номер кадра не может быть отрицательным"
+            )
 
         if self.source_type != "file":
             raise ValueError(
-                "Перемещение по кадрам доступно только для видеофайлов"
+                "Перемотка доступна только для видеофайлов"
             )
 
-        # Очищаем очередь перед перемоткой
-        while not self.q.empty():
-            try:
-                self.q.get_nowait()
-            except queue.Empty:
-                break
+        with self.capture_lock:
+            # Удаляем кадры, прочитанные до перемотки.
+            while True:
+                try:
+                    self.q.get_nowait()
+                except queue.Empty:
+                    break
 
-        # Устанавливаем новую позицию указателя чтения
-        self.capture.set(cv2.CAP_PROP_POS_FRAMES, frame_index)
+            # Перемещаем указатель чтения.
+            success = self.capture.set(
+                cv2.CAP_PROP_POS_FRAMES,
+                frame_index
+            )
+
+            if not success:
+                raise RuntimeError(
+                    f"Не удалось перейти к кадру {frame_index}"
+                )
+
 
     def get_current_frame_index(self) -> int:
         """Возвращает текущую позицию указателя чтения (актуально для файлов)."""
