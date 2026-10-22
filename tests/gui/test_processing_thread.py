@@ -30,9 +30,11 @@ class FakeVideo:
 
     def draw_rectangle(self, *args, **kwargs):
         self.drawn.append(("rectangle", args, kwargs))
+        args[0][0, 0] = 255
 
     def draw_text(self, *args, **kwargs):
         self.drawn.append(("text", args, kwargs))
+        args[0][0, 1] = 255
 
     def release(self):
         self.released = True
@@ -55,7 +57,6 @@ class FakeTracker:
 
 class FakeRenderer:
     def __init__(self):
-        self.saved = False
         self.overlays = []
 
     def overlay(self, frame, heatmap, alpha, colormap):
@@ -78,6 +79,7 @@ def test_processing_thread_processes_frame_and_saves_heatmap(
     renderer = FakeRenderer()
     statuses = []
     frames = []
+    saved_images = []
     monkeypatch.setattr(
         processing_module.VideoProcessor,
         "open_source",
@@ -87,6 +89,11 @@ def test_processing_thread_processes_frame_and_saves_heatmap(
     monkeypatch.setattr(processing_module, "ObjectTracker", FakeTracker)
     monkeypatch.setattr(
         processing_module, "HeatmapRenderer", lambda: renderer
+    )
+    monkeypatch.setattr(
+        processing_module.cv2,
+        "imwrite",
+        lambda path, image: saved_images.append((path, image)) or True,
     )
     monkeypatch.setattr(processing_module.time, "time", lambda: 10.0)
 
@@ -105,15 +112,18 @@ def test_processing_thread_processes_frame_and_saves_heatmap(
 
     assert len(frames) == 1
     assert video.released
-    assert renderer.saved == (
-        "data/output/heatmap.jpg",
+    assert saved_images[0][0] == "data/output/heatmap.jpg"
+    assert np.count_nonzero(saved_images[0][1][0, :2]) == 0
+    assert len(renderer.overlays) == (2 if show_heatmap else 1)
+    assert renderer.overlays[-1] == (
+        0.6,
         processing_module.cv2.COLORMAP_JET,
     )
-    assert bool(renderer.overlays) is show_heatmap
-    if expected_overlay is not None:
-        assert renderer.overlays == [
-            (expected_overlay, processing_module.cv2.COLORMAP_JET)
-        ]
+    if expected_overlay is not None and show_heatmap:
+        assert renderer.overlays[0] == (
+            expected_overlay,
+            processing_module.cv2.COLORMAP_JET,
+        )
     if show_detections:
         assert [entry[0] for entry in video.drawn] == ["rectangle", "text"]
     assert any("Обработано 1 кадров" in status for status in statuses)
