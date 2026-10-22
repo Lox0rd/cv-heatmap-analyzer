@@ -105,6 +105,7 @@ class ProcessingThread(QThread):
                     continue  # Пропускаем текущий кадр, читаем новый
 
                 frame_count += 1
+                background_frame = frame.copy()
 
                 # Отправляем текущую позицию кадра в GUI
                 current_pos = self.video.get_current_frame_index()
@@ -162,11 +163,14 @@ class ProcessingThread(QThread):
                 f"✓ Обработано {frame_count} кадров за {total_time:.1f}с "
                 f"({avg_fps:.1f} FPS). Сохранение..."
             )
-            heatmap_renderer.save(
+            output_frame = heatmap_renderer.overlay(
+                background_frame,
                 heatmap_generator.get_heatmap(),
-                "data/output/heatmap.jpg",
+                alpha=self.alpha,
                 colormap=colormap,
             )
+            if not cv2.imwrite("data/output/heatmap.jpg", output_frame):
+                raise IOError("Не удалось сохранить результат анализа")
             self.status_update.emit("✓ Тепловая карта сохранена в data/output/" \
             "heatmap.jpg")
             self.finished.emit()
