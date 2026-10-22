@@ -87,8 +87,10 @@ checkpoints/
 
 # Images
 *.jpg
+!/resources/forDocs/afteranalyze.jpg
 *.jpeg
 *.png
+!/resources/forDocs/beforeanalyze.png
 *.bmp
 *.tiff
 *.webp
