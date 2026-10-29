@@ -191,6 +191,7 @@ class MainWindow(QMainWindow):
         colormap_name: str,
         show_detections: bool,
         show_heatmap: bool,
+        selected_objects: list | None = None,
     ):
         # Предпросмотр и анализ не должны работать одновременно.
         self._stop_preview()
@@ -209,6 +210,7 @@ class MainWindow(QMainWindow):
             colormap_name=colormap_name,
             show_detections=show_detections,
             show_heatmap=show_heatmap,
+            selected_objects=selected_objects,
         )
 
         self.thread.frame_ready.connect(

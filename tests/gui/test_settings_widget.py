@@ -1,5 +1,6 @@
 
 import pytest
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import QMessageBox
 
 from src.gui.settings_widget import SettingsWidget
@@ -109,9 +110,25 @@ def test_start_emits_processing_parameters(widget, qtbot):
     assert args[4] == "Jet"
     assert args[5] is True
     assert args[6] is True
+    assert args[7] == [
+        "person", "bicycle", "car", "motorcycle", "bus", "truck"
+    ]
 
     assert not widget.start_btn.isEnabled()
     assert widget.stop_btn.isEnabled()
+
+
+def test_object_dropdown_returns_checked_objects(widget):
+    for index in range(widget.object_combo.count()):
+        widget.object_combo.model().item(index).setCheckState(
+            Qt.CheckState.Unchecked
+        )
+
+    widget.object_combo.model().item(2).setCheckState(
+        Qt.CheckState.Checked
+    )
+
+    assert widget.object_combo.selected_values() == ["car"]
 
 
 def test_start_with_empty_source_shows_warning(
