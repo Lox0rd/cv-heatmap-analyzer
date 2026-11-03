@@ -1,5 +1,5 @@
 
-from PyQt6.QtCore import Qt, pyqtSignal
+from PyQt6.QtCore import Qt, QTimer, pyqtSignal
 from PyQt6.QtWidgets import (
     QCheckBox,
     QComboBox,
@@ -21,15 +21,68 @@ from src.config.settings import (
     DEFAULT_CAMERA_INDEX,
     DEFAULT_SKIP_FRAMES,
     DEFAULT_VIDEO_SOURCE,
+    DETECTED_OBJECTS,
     DETECTION_CONFIDENCE,
     HEATMAP_ALPHA,
     HEATMAP_COLORMAP_NAME,
 )
 
 
+class CheckableComboBox(QComboBox):
+    """Combo box that lets users choose more than one object class."""
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setEditable(True)
+        self.lineEdit().setReadOnly(True)
+        self.view().pressed.connect(self._toggle_item)
+        self.activated.connect(self._reopen_after_selection)
+
+    def add_checkable_item(self, label, value, checked=True):
+        self.addItem(label, value)
+        item = self.model().item(self.count() - 1)
+        item.setFlags(item.flags() | Qt.ItemFlag.ItemIsUserCheckable)
+        item.setCheckState(
+            Qt.CheckState.Checked if checked else Qt.CheckState.Unchecked
+        )
+        self._refresh_text()
+
+    def _toggle_item(self, index):
+        item = self.model().itemFromIndex(index)
+        state = item.checkState()
+        item.setCheckState(
+            Qt.CheckState.Unchecked
+            if state == Qt.CheckState.Checked
+            else Qt.CheckState.Checked
+        )
+        self._refresh_text()
+
+    def _reopen_after_selection(self, _index):
+        QTimer.singleShot(0, self._refresh_and_reopen)
+
+    def _refresh_and_reopen(self):
+        self._refresh_text()
+        self.showPopup()
+
+    def _refresh_text(self):
+        checked_labels = [
+            self.itemText(index)
+            for index in range(self.count())
+            if self.model().item(index).checkState() == Qt.CheckState.Checked
+        ]
+        self.setEditText(", ".join(checked_labels) or "Ничего не выбрано")
+
+    def selected_values(self):
+        return [
+            self.itemData(index)
+            for index in range(self.count())
+            if self.model().item(index).checkState() == Qt.CheckState.Checked
+        ]
+
+
 class SettingsWidget(QWidget):
     start_requested = pyqtSignal(
-        list, float, float, int, str, bool, bool
+        list, float, float, int, str, bool, bool, list
     )
     stop_requested = pyqtSignal()
     seek_requested = pyqtSignal(int)
@@ -194,6 +247,23 @@ class SettingsWidget(QWidget):
             DEFAULT_SKIP_FRAMES,
             1,
         )
+
+        self.object_combo = CheckableComboBox()
+        object_labels = {
+            "person": "Человек",
+            "bicycle": "Велосипед",
+            "car": "Автомобиль",
+            "motorcycle": "Мотоцикл",
+            "bus": "Автобус",
+            "truck": "Грузовик",
+        }
+        for object_name in DETECTED_OBJECTS:
+            self.object_combo.add_checkable_item(
+                object_labels.get(object_name, object_name),
+                object_name,
+            )
+        params_layout.addWidget(QLabel("Объекты для детекции:"))
+        params_layout.addWidget(self.object_combo)
 
         params_group.setLayout(params_layout)
         layout.addWidget(params_group)
@@ -445,6 +515,7 @@ class SettingsWidget(QWidget):
             HEATMAP_COLORMAP_NAME,
             self.cb_detections.isChecked(),
             self.cb_heatmap.isChecked(),
+            self.object_combo.selected_values(),
         )
 
         self.start_btn.setEnabled(False)

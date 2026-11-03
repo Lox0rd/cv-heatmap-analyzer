@@ -45,6 +45,7 @@ class ProcessingThread(QThread):
         colormap_name: str = "Jet",
         show_detections: bool = True,
         show_heatmap: bool = True,
+        selected_objects: list | None = None,
     ):
         super().__init__()
         self.sources = sources
@@ -54,6 +55,7 @@ class ProcessingThread(QThread):
         self.colormap_name = colormap_name
         self.show_detections = show_detections
         self.show_heatmap = show_heatmap
+        self.selected_objects = selected_objects
 
         self._is_running = True
         self._seek_position = None  # Позиция для перемотки
@@ -122,7 +124,9 @@ class ProcessingThread(QThread):
 
                 # Детекция и трекинг
                 detections = tracker.update(
-                    frame, objects=None, confidence=self.confidence
+                    frame,
+                    objects=self.selected_objects,
+                    confidence=self.confidence,
                 )
                 heatmap_generator.update(detections)
 

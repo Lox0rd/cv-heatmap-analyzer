@@ -50,7 +50,7 @@ class FakeTracker:
         }]
 
     def update(self, frame, objects, confidence):
-        assert objects is None
+        assert objects == ["person"]
         assert confidence == 0.5
         return self.detections
 
@@ -105,6 +105,7 @@ def test_processing_thread_processes_frame_and_saves_heatmap(
         colormap_name="Missing",
         show_detections=show_detections,
         show_heatmap=show_heatmap,
+        selected_objects=["person"],
     )
     thread.status_update.connect(statuses.append)
     thread.frame_ready.connect(frames.append)
