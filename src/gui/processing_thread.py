@@ -94,6 +94,11 @@ class ProcessingThread(QThread):
             start_time = time.time()
             last_fps_update = start_time
 
+            # === ADDED: Initialize tracking variables BEFORE the loop ===
+            best_frame = None
+            max_heat = 0.0
+            # ==========================================================
+
             for frame in self.video.read_frames(skip_frames=self.skip_frames):
                 if not self._is_running:
                     break
@@ -107,7 +112,10 @@ class ProcessingThread(QThread):
                     continue  # Пропускаем текущий кадр, читаем новый
 
                 frame_count += 1
-                background_frame = frame.copy()
+                
+                # === ADDED: Keep a clean copy of the frame for the final save ===
+                current_frame_copy = frame.copy()
+                # ===============================================================
 
                 # Отправляем текущую позицию кадра в GUI
                 current_pos = self.video.get_current_frame_index()
@@ -130,12 +138,18 @@ class ProcessingThread(QThread):
                 )
                 heatmap_generator.update(detections)
 
+                # === ADDED: Calculate actual heatmap intensity (amount of "red") ===
+                current_heat = np.sum(heatmap_generator.get_heatmap())
+                if current_heat > max_heat:
+                    max_heat = current_heat
+                    best_frame = current_frame_copy
+                # ==================================================================
+
                 # Отрисовка детекций (если включено)
                 if self.show_detections:
                     for obj in detections:
                         x1, y1, x2, y2 = obj["bbox"]
-                        text = f"{obj['label']} ID:{obj['track_id']} {obj['confidence']
-                                                                      :.2f}"
+                        text = f"{obj['label']} ID:{obj['track_id']} {obj['confidence']:.2f}"
                         self.video.draw_rectangle(
                             frame, x1, y1, x2, y2,
                             color=(0, 255, 0), thickness=2
@@ -161,22 +175,42 @@ class ProcessingThread(QThread):
 
                 self.frame_ready.emit(display_frame)
 
+            # === AFTER THE LOOP ENDS === (Fixed indentation so it runs after the loop)
             total_time = time.time() - start_time
             avg_fps = frame_count / total_time if total_time > 0 else 0
+            
             self.status_update.emit(
                 f"✓ Обработано {frame_count} кадров за {total_time:.1f}с "
-                f"({avg_fps:.1f} FPS). Сохранение..."
+                f"({avg_fps:.1f} FPS). Сохранение результатов..."
             )
+
+            # 1. Save the RAW heatmap (just the colors, no video frame)
+            raw_heatmap_path = "data/output/heatmap_raw.jpg"
+            try:
+                heatmap_renderer.save(
+                    heatmap_generator.get_heatmap(), 
+                    raw_heatmap_path, 
+                    colormap
+                )
+                self.status_update.emit(f"✓ Сырая тепловая карта: {raw_heatmap_path}")
+            except IOError as e:
+                self.status_update.emit(f"✗ Ошибка сохранения сырой карты: {e}")
+
+            # 2. Save the OVERLAY on the "hottest" frame (most red intensity)
+            final_frame = best_frame if best_frame is not None else current_frame_copy
+            
             output_frame = heatmap_renderer.overlay(
-                background_frame,
+                final_frame,
                 heatmap_generator.get_heatmap(),
                 alpha=self.alpha,
                 colormap=colormap,
             )
-            if not cv2.imwrite("data/output/heatmap.jpg", output_frame):
-                raise IOError("Не удалось сохранить результат анализа")
-            self.status_update.emit("✓ Тепловая карта сохранена в data/output/" \
-            "heatmap.jpg")
+
+            overlay_path = "data/output/heatmap_overlay.jpg"
+            if not cv2.imwrite(overlay_path, output_frame):
+                raise IOError("Не удалось сохранить результат анализа с наложением")
+                
+            self.status_update.emit(f"✓ Кадр с наложением: {overlay_path}")
             self.finished.emit()
 
         except Exception as e:
