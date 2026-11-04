@@ -1,4 +1,3 @@
-
 import cv2
 import numpy as np
 from PyQt6.QtCore import Qt
@@ -16,6 +15,12 @@ class VideoWidget(QLabel):
 
         self.last_frame = None
 
+    def set_placeholder(self, text: str):
+        """Сбрасывает текущий кадр и показывает текст-заглушку."""
+        self.setPixmap(QPixmap())  
+        self.setText(text)
+        self.last_frame = None     
+        
     def update_frame(self, frame: np.ndarray):
         self.last_frame = frame
         self._display_frame(frame)
