@@ -52,10 +52,14 @@ class ZoneCanvas(QLabel):
     def image_rect(self) -> QRectF:
         if self.image is None:
             return QRectF()
-        scale = min(self.width() / self.image.width(), self.height() / self.image.height())
+        scale = min(
+            self.width() / self.image.width(), self.height() / self.image.height()
+        )
         width = self.image.width() * scale
         height = self.image.height() * scale
-        return QRectF((self.width() - width) / 2, (self.height() - height) / 2, width, height)
+        return QRectF(
+            (self.width() - width) / 2, (self.height() - height) / 2, width, height
+        )
 
     def frame_point(self, position: QPointF) -> tuple[int, int] | None:
         rect = self.image_rect()
@@ -81,7 +85,11 @@ class ZoneCanvas(QLabel):
         painter = QPainter(pixmap)
         if self.image is None:
             painter.setPen(QColor("#A9C2D4"))
-            painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Загрузите кадр для разметки зон")
+            painter.drawText(
+                self.rect(),
+                Qt.AlignmentFlag.AlignCenter,
+                "Загрузите кадр для разметки зон",
+            )
             painter.end()
             self.setPixmap(pixmap)
             return
@@ -109,7 +117,9 @@ class ZoneCanvas(QLabel):
         if self.draft:
             painter.setPen(QPen(QColor("#FFD166"), 2))
             painter.setBrush(Qt.BrushStyle.NoBrush)
-            painter.drawPolyline(QPolygonF([display_point(point) for point in self.draft]))
+            painter.drawPolyline(
+                QPolygonF([display_point(point) for point in self.draft])
+            )
             painter.setBrush(QColor("#FFD166"))
             for point in self.draft:
                 painter.drawEllipse(display_point(point), 4, 4)
@@ -127,7 +137,9 @@ class ZonesWidget(QWidget):
 
     def __init__(self, store: ZoneStore | None = None):
         super().__init__()
-        default_path = Path(__file__).resolve().parents[2] / "data" / "output" / "zones.json"
+        default_path = (
+            Path(__file__).resolve().parents[2] / "data" / "output" / "zones.json"
+        )
         self.store = store or ZoneStore(default_path)
         self.manager = ZoneManager()
         self.source = None
@@ -148,7 +160,9 @@ class ZonesWidget(QWidget):
         self.canvas = ZoneCanvas()
         self.canvas.point_added.connect(self._add_point)
         viewer_layout.addWidget(self.canvas, stretch=1)
-        self.hint = QLabel("Выберите источник на вкладке «Анализ», затем загрузите кадр.")
+        self.hint = QLabel(
+            "Выберите источник на вкладке «Анализ», затем загрузите кадр."
+        )
         self.hint.setObjectName("zoneHint")
         self.hint.setWordWrap(True)
         viewer_layout.addWidget(self.hint)
@@ -209,7 +223,9 @@ class ZonesWidget(QWidget):
             self._refresh_zones()
         self.canvas.set_frame(frame)
         self.cancel_zone()
-        self.hint.setText("Нажмите «Новая зона» и отметьте на кадре минимум три вершины.")
+        self.hint.setText(
+            "Нажмите «Новая зона» и отметьте на кадре минимум три вершины."
+        )
 
     def clear_context(self, message: str) -> None:
         self.source = None

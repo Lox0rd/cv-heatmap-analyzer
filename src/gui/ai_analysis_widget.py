@@ -39,7 +39,9 @@ class VisionAnalysisThread(QThread):
 
 
 class AIAnalysisWidget(QWidget):
-    def __init__(self, output_dir: Path | None = None, zones_provider=None, prompt_provider=None):
+    def __init__(
+        self, output_dir: Path | None = None, zones_provider=None, prompt_provider=None
+    ):
         super().__init__()
         self.output_dir = Path(output_dir or Path("data/output"))
         self.zones_provider = zones_provider or (lambda frame: [])
@@ -63,7 +65,9 @@ class AIAnalysisWidget(QWidget):
         self.image_display = HeatmapWidget()
         self.image_display.setMinimumSize(280, 240)
         image_layout.addWidget(self.image_display, stretch=1)
-        self.image_status = QLabel("Запустите анализ, чтобы создать кадр с тепловой картой.")
+        self.image_status = QLabel(
+            "Запустите анализ, чтобы создать кадр с тепловой картой."
+        )
         self.image_status.setObjectName("zoneHint")
         self.image_status.setWordWrap(True)
         image_layout.addWidget(self.image_status)
