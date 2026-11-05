@@ -36,6 +36,7 @@ class MainWindow(QMainWindow):
         self.preview_thread = None
         self._display_source_key = None
         self._zones_loaded_for = None
+        self._analysis_result_path = None
 
         self._load_styles()
         self._init_ui()
@@ -145,7 +146,7 @@ class MainWindow(QMainWindow):
         sidebar_title.setContentsMargins(18, 18, 18, 12)
         sidebar_layout.addWidget(sidebar_title)
 
-        self.settings_widget = SettingsWidget()
+        self.settings_widget = SettingsWidget(separate_parameters=True)
         self.settings_dialog = QDialog(self)
         self.settings_dialog.setWindowTitle("Настройки анализа")
         self.settings_dialog.setObjectName("settingsDialog")
@@ -333,6 +334,7 @@ class MainWindow(QMainWindow):
         selected_objects: list | None = None,
     ):
         self._stop_preview()
+        self._analysis_result_path = None
         source_type = self.settings_widget.source_type_combo.currentData()
         source = sources[0]
         if source_type == "file":
@@ -361,6 +363,7 @@ class MainWindow(QMainWindow):
         self.thread.frame_position_changed.connect(self.settings_widget.set_current_frame)
         self.thread.total_frames_changed.connect(self.settings_widget.set_total_frames)
         self.thread.is_file_source.connect(self.settings_widget.set_seek_enabled)
+        self.thread.result_saved.connect(self._on_result_saved)
         self.thread.finished.connect(self.on_finished)
 
         self.thread.start()
@@ -380,13 +383,17 @@ class MainWindow(QMainWindow):
             self.settings_widget.set_status("Остановка анализа...")
             self.thread.stop()
 
-    def on_finished(self):
-        self.settings_widget.set_analysis_running(False)
-        self.settings_widget.set_status(
-            "Обработка завершена. Тепловая карта: data/output/heatmap_overlay.jpg"
-        )
+    def _on_result_saved(self, path: str):
+        self._analysis_result_path = path
         self.map_widget.refresh()
         self.ai_widget.refresh_frame()
+
+    def on_finished(self):
+        self.settings_widget.set_analysis_running(False)
+        if self._analysis_result_path is not None:
+            self.settings_widget.set_status(
+                f"Обработка завершена. Тепловая карта: {self._analysis_result_path}"
+            )
         self.settings_widget.start_btn.setEnabled(True)
         self.settings_widget.stop_btn.setEnabled(False)
         self.settings_widget._set_source_controls_enabled(True)
@@ -395,6 +402,13 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
+        if self.ai_widget.worker is not None and self.ai_widget.worker.isRunning():
+            self.ai_widget.status_label.setText(
+                "Дождитесь завершения запроса к модели перед закрытием окна."
+            )
+            self.tabs.setCurrentIndex(4)
+            event.ignore()
+            return
         self._stop_preview()
         if self.thread and self.thread.isRunning():
             self.stop_processing()

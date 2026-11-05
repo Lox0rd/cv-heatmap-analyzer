@@ -146,3 +146,11 @@ def test_on_finished_enables_controls(window):
     assert window.settings_widget.start_btn.isEnabled()
     assert not window.settings_widget.stop_btn.isEnabled()
     assert window.settings_widget.play_btn.isEnabled()
+
+
+def test_failed_analysis_keeps_error_status(window):
+    window.settings_widget.set_status("✗ Критическая ошибка: source failed")
+
+    window.on_finished()
+
+    assert "source failed" in window.settings_widget.status_label.text()

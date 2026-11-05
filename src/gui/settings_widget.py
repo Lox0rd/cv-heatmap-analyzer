@@ -88,7 +88,7 @@ class SettingsWidget(QWidget):
     seek_requested = pyqtSignal(int)
     preview_play_requested = pyqtSignal()
 
-    def __init__(self):
+    def __init__(self, separate_parameters: bool = False):
         super().__init__()
 
         layout = QVBoxLayout(self)
@@ -272,7 +272,8 @@ class SettingsWidget(QWidget):
         params_layout.addWidget(self.object_combo)
 
         self.params_group.setLayout(params_layout)
-        layout.addWidget(self.params_group)
+        if not separate_parameters:
+            layout.addWidget(self.params_group)
 
         # === Настройки отображения ===
         self.display_group = QGroupBox("Отображение")
@@ -291,7 +292,8 @@ class SettingsWidget(QWidget):
         display_layout.addWidget(self.cb_heatmap)
 
         self.display_group.setLayout(display_layout)
-        layout.addWidget(self.display_group)
+        if not separate_parameters:
+            layout.addWidget(self.display_group)
 
         # === Кнопки управления анализом ===
         control_layout = QHBoxLayout()

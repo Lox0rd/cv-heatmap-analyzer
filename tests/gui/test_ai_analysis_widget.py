@@ -21,6 +21,7 @@ def test_sends_overlay_frame_and_prompt_to_vision_api(qtbot, monkeypatch, tmp_pa
     widget.prompt_input.setPlainText("Опиши тепловую карту")
     widget.start_analysis()
     qtbot.waitUntil(lambda: widget.status_label.text() == "Анализ завершён.")
+    qtbot.waitUntil(lambda: not widget.worker.isRunning())
 
     assert len(received) == 1
     assert np.array_equal(received[0][0], widget.overlay_frame)
@@ -60,5 +61,6 @@ def test_api_error_is_shown_without_freezing_interface(qtbot, monkeypatch, tmp_p
     widget.refresh_frame()
     widget.start_analysis()
     qtbot.waitUntil(lambda: "COMET_API_KEY" in widget.status_label.text())
+    qtbot.waitUntil(lambda: not widget.worker.isRunning())
 
     assert widget.analyze_btn.isEnabled()
