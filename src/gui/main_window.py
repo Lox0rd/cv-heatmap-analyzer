@@ -37,6 +37,7 @@ class MainWindow(QMainWindow):
         self._display_source_key = None
         self._zones_loaded_for = None
         self._analysis_result_path = None
+        self._analysis_result_source_key = None
 
         self._load_styles()
         self._init_ui()
@@ -113,7 +114,7 @@ class MainWindow(QMainWindow):
         self.map_widget = MapWidget()
         self.tabs.addTab(self.map_widget, "Карта")
         self.tabs.addTab(self._placeholder_page(), "Статистика")
-        self.ai_widget = AIAnalysisWidget()
+        self.ai_widget = AIAnalysisWidget(zones_provider=self._zones_for_ai)
         self.tabs.addTab(self.ai_widget, "AI анализ")
         self.tabs.addTab(self._placeholder_page(), "Экспорт")
         self.tabs.currentChanged.connect(self._on_tab_changed)
@@ -251,6 +252,16 @@ class MainWindow(QMainWindow):
             self.video_widget.set_zones(self.zones_widget.manager.get_zones())
             self._zones_loaded_for = (*self.zones_widget.frame_size, self._display_source_key)
 
+    def _zones_for_ai(self, frame):
+        source_key = self._analysis_result_source_key
+        if source_key is None:
+            try:
+                _, source_key = self._selected_source()
+            except ValueError:
+                return []
+        height, width = frame.shape[:2]
+        return self.zones_widget.store.load(source_key, width, height).get_zones()
+
     def _show_frame(self, frame):
         height, width = frame.shape[:2]
         identity = (width, height, self._display_source_key)
@@ -380,6 +391,7 @@ class MainWindow(QMainWindow):
 
     def _on_result_saved(self, path: str):
         self._analysis_result_path = path
+        self._analysis_result_source_key = self._display_source_key
         self.map_widget.refresh()
         self.ai_widget.refresh_frame()
 

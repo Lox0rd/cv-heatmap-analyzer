@@ -6,6 +6,7 @@ import pytest
 from PyQt6.QtWidgets import QFrame
 
 from src.gui.main_window import MainWindow
+from src.zones.zone_manager import ZoneManager
 from src.zones.zone_store import ZoneStore
 
 
@@ -72,6 +73,20 @@ def test_saved_zone_appears_on_analysis_video(window, monkeypatch, tmp_path):
     assert [zone.name for zone in window.video_widget.zones] == ["Вход"]
     assert window.video_widget.last_frame is frame
     capture.release.assert_called()
+
+
+def test_ai_uses_zones_from_analyzed_source(window, tmp_path):
+    store = ZoneStore(tmp_path / "zones.json")
+    manager = ZoneManager()
+    manager.add_zone("Вход", [(10, 10), (80, 10), (80, 60)])
+    store.save("file:analyzed.mp4", 100, 100, manager.get_zones())
+    window.zones_widget.store = store
+    window._analysis_result_source_key = "file:analyzed.mp4"
+    window.settings_widget.source_input.setText("different.mp4")
+
+    zones = window._zones_for_ai(np.zeros((100, 100, 3), dtype=np.uint8))
+
+    assert [zone.name for zone in zones] == ["Вход"]
 
 
 def test_play_preview_rejects_non_file_source(

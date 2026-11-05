@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 
 from src.ai.vision_api import VisionAPI
 from src.gui.heatmap_widget import HeatmapWidget
+from src.zones.overlay import draw_zones
 
 
 DEFAULT_PROMPT = (
@@ -45,10 +46,12 @@ class VisionAnalysisThread(QThread):
 
 
 class AIAnalysisWidget(QWidget):
-    def __init__(self, output_dir: Path | None = None):
+    def __init__(self, output_dir: Path | None = None, zones_provider=None):
         super().__init__()
         self.output_dir = Path(output_dir or Path("data/output"))
+        self.zones_provider = zones_provider or (lambda frame: [])
         self.overlay_frame = None
+        self.zones = []
         self.worker = None
 
         layout = QHBoxLayout(self)
@@ -111,17 +114,30 @@ class AIAnalysisWidget(QWidget):
             return self.overlay_frame is not None
         path = self.output_dir / "heatmap_overlay.jpg"
         frame = cv2.imread(str(path)) if path.is_file() else None
-        self.overlay_frame = frame
         if frame is None:
+            self.overlay_frame = None
+            self.zones = []
             self.image_display.set_placeholder("Кадр с тепловой картой пока не создан")
             self.image_status.setText("Сначала запустите анализ видео.")
             self.status_label.setText("Ожидание кадра.")
         else:
-            self.image_display.update_heatmap(frame)
-            self.image_status.setText(f"Будет отправлен кадр: {path.name}")
+            try:
+                self.zones = list(self.zones_provider(frame))
+            except (OSError, ValueError, KeyError, TypeError) as error:
+                self.overlay_frame = None
+                self.image_display.set_placeholder("Не удалось загрузить зоны")
+                self.image_status.setText(str(error))
+                self.status_label.setText("Проверьте файл зон.")
+                self.analyze_btn.setEnabled(False)
+                return False
+            self.overlay_frame = draw_zones(frame, self.zones)
+            self.image_display.update_heatmap(self.overlay_frame)
+            self.image_status.setText(
+                f"Будет отправлен кадр: {path.name}. Отмечено зон: {len(self.zones)}."
+            )
             self.status_label.setText("Кадр готов к анализу.")
-        self.analyze_btn.setEnabled(frame is not None and not self._is_running())
-        return frame is not None
+        self.analyze_btn.setEnabled(self.overlay_frame is not None)
+        return self.overlay_frame is not None
 
     def _is_running(self) -> bool:
         return self.worker is not None and self.worker.isRunning()
@@ -136,6 +152,15 @@ class AIAnalysisWidget(QWidget):
         if self.overlay_frame is None:
             self.status_label.setText("Сначала постройте тепловую карту.")
             return
+        if self.zones:
+            legend = "; ".join(
+                f"{number} — {zone.name}"
+                for number, zone in enumerate(self.zones, start=1)
+            )
+            prompt += (
+                "\n\nКонтуры с номерами на кадре обозначают зоны интереса: "
+                f"{legend}. Учитывай их в выводах."
+            )
         self.result_output.clear()
         self.status_label.setText("Кадр и промпт отправляются модели...")
         self.analyze_btn.setEnabled(False)
