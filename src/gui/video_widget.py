@@ -4,6 +4,8 @@ from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QImage, QPixmap
 from PyQt6.QtWidgets import QLabel
 
+from src.zones.overlay import draw_zones
+
 
 class VideoWidget(QLabel):
     def __init__(self):
@@ -33,10 +35,7 @@ class VideoWidget(QLabel):
 
     def _display_frame(self, frame: np.ndarray):
         """Отображает видеокадр с сохранением пропорций."""
-        frame = frame.copy()
-        for zone in self.zones:
-            points = np.array(zone.points, dtype=np.int32).reshape((-1, 1, 2))
-            cv2.polylines(frame, [points], True, (255, 210, 50), 2)
+        frame = draw_zones(frame, self.zones)
         rgb_frame = cv2.cvtColor(
             frame,
             cv2.COLOR_BGR2RGB,
