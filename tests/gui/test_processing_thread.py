@@ -1,8 +1,12 @@
+import json
+
 import numpy as np
 import pytest
 
 from src.gui import processing_thread as processing_module
 from src.gui.processing_thread import ProcessingThread
+from src.zones.zone_manager import ZoneManager
+from src.zones.zone_store import ZoneStore
 
 
 class FakeVideo:
@@ -150,3 +154,34 @@ def test_processing_thread_reports_open_source_error(monkeypatch):
 
     assert any("source failed" in status for status in statuses)
     assert result_paths == []
+
+
+def test_processing_thread_saves_zone_statistics(monkeypatch, tmp_path):
+    frame = np.zeros((12, 16, 3), dtype=np.uint8)
+    video = FakeVideo(frame)
+    zones = ZoneManager()
+    zones.add_zone("Вход", [(0, 0), (15, 0), (15, 11), (0, 11)])
+    zone_path = tmp_path / "zones.json"
+    statistics_path = tmp_path / "zone_statistics.json"
+    ZoneStore(zone_path).save("file:sample.mp4", 16, 12, zones.get_zones())
+    monkeypatch.setattr(processing_module.VideoProcessor, "open_source", lambda _: video)
+    monkeypatch.setattr(processing_module, "YOLODetector", lambda: object())
+    monkeypatch.setattr(processing_module, "ObjectTracker", FakeTracker)
+    monkeypatch.setattr(processing_module, "HeatmapRenderer", FakeRenderer)
+    monkeypatch.setattr(processing_module.cv2, "imwrite", lambda *_: True)
+    paths = []
+    thread = ProcessingThread(
+        sources=["sample.mp4"], confidence=0.5, alpha=0.6, skip_frames=0,
+        selected_objects=["person"], source_key="file:sample.mp4",
+        zone_store_path=zone_path, statistics_path=statistics_path,
+    )
+    thread.statistics_saved.connect(paths.append)
+
+    thread.run()
+
+    assert paths == [str(statistics_path)]
+    result = json.loads(statistics_path.read_text(encoding="utf-8"))
+    assert result["zones"][0] == {
+        "name": "Вход", "observations": 1, "unique_objects": 1
+    }
+    assert result["timeline"][0]["zones"] == {"Вход": 1}
