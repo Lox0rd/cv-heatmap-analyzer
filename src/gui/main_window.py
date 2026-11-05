@@ -4,10 +4,12 @@ import cv2
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication,
+    QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QPushButton,
     QScrollArea,
     QTabWidget,
     QVBoxLayout,
@@ -83,6 +85,10 @@ class MainWindow(QMainWindow):
         identity.addWidget(title)
         header_layout.addLayout(identity)
         header_layout.addStretch()
+        self.settings_button = QPushButton("Настройки")
+        self.settings_button.setObjectName("settingsButton")
+        self.settings_button.clicked.connect(self._show_settings)
+        header_layout.addWidget(self.settings_button)
         module = QLabel("ТЕПЛОВАЯ КАРТА  /  АНАЛИЗ ВИДЕО")
         module.setObjectName("headerModule")
         header_layout.addWidget(module)
@@ -119,12 +125,24 @@ class MainWindow(QMainWindow):
         sidebar_layout = QVBoxLayout(sidebar)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
-        sidebar_title = QLabel("Параметры анализа")
+        sidebar_title = QLabel("Источник и запуск")
         sidebar_title.setObjectName("sectionTitle")
         sidebar_title.setContentsMargins(18, 18, 18, 12)
         sidebar_layout.addWidget(sidebar_title)
 
         self.settings_widget = SettingsWidget()
+        self.settings_dialog = QDialog(self)
+        self.settings_dialog.setWindowTitle("Настройки анализа")
+        self.settings_dialog.setObjectName("settingsDialog")
+        self.settings_dialog.setMinimumWidth(390)
+        dialog_layout = QVBoxLayout(self.settings_dialog)
+        dialog_layout.setContentsMargins(20, 16, 20, 20)
+        dialog_layout.setSpacing(12)
+        dialog_layout.addWidget(self.settings_widget.params_group)
+        dialog_layout.addWidget(self.settings_widget.display_group)
+        close_settings = QPushButton("Готово")
+        close_settings.clicked.connect(self.settings_dialog.close)
+        dialog_layout.addWidget(close_settings)
         settings_scroll = QScrollArea()
         settings_scroll.setObjectName("settingsScroll")
         settings_scroll.setWidgetResizable(True)
@@ -161,6 +179,11 @@ class MainWindow(QMainWindow):
         self.settings_widget.stop_requested.connect(self.stop_processing)
         self.settings_widget.preview_play_requested.connect(self.play_preview)
         self.settings_widget.seek_requested.connect(self._on_seek)
+
+    def _show_settings(self):
+        self.settings_dialog.show()
+        self.settings_dialog.raise_()
+        self.settings_dialog.activateWindow()
 
     # === Предпросмотр видео ===
     def _selected_source(self):

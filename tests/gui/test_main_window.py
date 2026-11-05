@@ -31,6 +31,15 @@ def test_main_window_initializes(window):
     ]
 
 
+def test_processing_options_open_in_settings_dialog(window):
+    assert window.settings_widget.params_group.parentWidget() is window.settings_dialog
+    assert window.settings_widget.display_group.parentWidget() is window.settings_dialog
+    assert window.settings_widget.source_group.parentWidget() is window.settings_widget
+    window.settings_button.click()
+    assert window.settings_dialog.isVisible()
+    window.settings_dialog.close()
+
+
 def test_saved_zone_appears_on_analysis_video(window, monkeypatch, tmp_path):
     frame = np.zeros((100, 200, 3), dtype=np.uint8)
     capture = MagicMock()

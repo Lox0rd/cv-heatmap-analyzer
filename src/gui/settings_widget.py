@@ -96,7 +96,7 @@ class SettingsWidget(QWidget):
         layout.setSpacing(9)
 
         # === Источник видео ===
-        source_group = QGroupBox("Источник видео")
+        self.source_group = QGroupBox("Источник видео")
         source_layout = QVBoxLayout()
 
         self.source_type_combo = QComboBox()
@@ -174,8 +174,8 @@ class SettingsWidget(QWidget):
         camera_layout.addWidget(self.camera_index)
         source_layout.addWidget(self.camera_widget)
 
-        source_group.setLayout(source_layout)
-        layout.addWidget(source_group)
+        self.source_group.setLayout(source_layout)
+        layout.addWidget(self.source_group)
 
         self.source_type_combo.currentIndexChanged.connect(
             self._on_source_type_changed
@@ -221,7 +221,7 @@ class SettingsWidget(QWidget):
         self._on_source_type_changed()
 
         # === Параметры обработки ===
-        params_group = QGroupBox("Параметры")
+        self.params_group = QGroupBox("Параметры")
         params_layout = QVBoxLayout()
 
         self.conf_spin = self._add_spin(
@@ -271,11 +271,11 @@ class SettingsWidget(QWidget):
         params_layout.addWidget(QLabel("Объекты для детекции:"))
         params_layout.addWidget(self.object_combo)
 
-        params_group.setLayout(params_layout)
-        layout.addWidget(params_group)
+        self.params_group.setLayout(params_layout)
+        layout.addWidget(self.params_group)
 
         # === Настройки отображения ===
-        display_group = QGroupBox("Отображение")
+        self.display_group = QGroupBox("Отображение")
         display_layout = QVBoxLayout()
 
         self.cb_detections = QCheckBox(
@@ -290,8 +290,8 @@ class SettingsWidget(QWidget):
         self.cb_heatmap.setChecked(True)
         display_layout.addWidget(self.cb_heatmap)
 
-        display_group.setLayout(display_layout)
-        layout.addWidget(display_group)
+        self.display_group.setLayout(display_layout)
+        layout.addWidget(self.display_group)
 
         # === Кнопки управления анализом ===
         control_layout = QHBoxLayout()

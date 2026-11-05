@@ -57,3 +57,6 @@ QListWidget#zoneList::item:selected { color: #075B94; background: #D8EEFA; }
 QPushButton#secondaryButton { color: #086AA8; background: #FFFFFF; border: 1px solid #9FC6DF; }
 QPushButton#secondaryButton:hover { background: #EAF5FC; }
 QPushButton#secondaryButton:disabled { color: #91A3B1; background: #F5F8FA; border-color: #D9E3EA; }
+QPushButton#settingsButton { color: #FFFFFF; background: transparent; border: 1px solid #9BC9E7; padding: 7px 16px; }
+QPushButton#settingsButton:hover { background: #1265A1; }
+QDialog#settingsDialog { background: #FFFFFF; }
