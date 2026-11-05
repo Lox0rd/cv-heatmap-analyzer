@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
+from PyQt6.QtWidgets import QFrame
 
 from src.gui.main_window import MainWindow
 from src.zones.zone_store import ZoneStore
@@ -38,6 +39,16 @@ def test_processing_options_open_in_settings_dialog(window):
     window.settings_button.click()
     assert window.settings_dialog.isVisible()
     window.settings_dialog.close()
+
+
+def test_analysis_controls_are_right_of_video(window):
+    window.show()
+    analysis_page = window.tabs.widget(0)
+    viewer = analysis_page.findChild(QFrame, "viewerPanel")
+    sidebar = analysis_page.findChild(QFrame, "sidebar")
+
+    assert viewer.geometry().right() < sidebar.geometry().left()
+    assert window.settings_widget.seek_group.parentWidget() is sidebar
 
 
 def test_saved_zone_appears_on_analysis_video(window, monkeypatch, tmp_path):

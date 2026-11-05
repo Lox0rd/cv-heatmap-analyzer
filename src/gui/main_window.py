@@ -148,7 +148,7 @@ class MainWindow(QMainWindow):
         settings_scroll.setFrameShape(QFrame.Shape.NoFrame)
         settings_scroll.setWidget(self.settings_widget)
         sidebar_layout.addWidget(settings_scroll, stretch=1)
-        workspace_layout.addWidget(sidebar)
+        sidebar_layout.addWidget(self.settings_widget.seek_group)
 
         viewer = QFrame()
         viewer.setObjectName("viewerPanel")
@@ -169,8 +169,8 @@ class MainWindow(QMainWindow):
         self.video_widget = VideoWidget()
         self.video_widget.setMinimumSize(320, 240)
         viewer_layout.addWidget(self.video_widget, stretch=1)
-        viewer_layout.addWidget(self.settings_widget.seek_group)
         workspace_layout.addWidget(viewer, stretch=1)
+        workspace_layout.addWidget(sidebar)
 
 
         # Сигналы анализа.
