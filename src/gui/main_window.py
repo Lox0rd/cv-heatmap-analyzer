@@ -112,27 +112,10 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.zones_widget, "Зоны")
         self.map_widget = MapWidget()
         self.tabs.addTab(self.map_widget, "Карта")
-        page = QWidget()
-        page.setObjectName("placeholderPage")
-        page_layout = QVBoxLayout(page)
-        page_layout.addStretch()
-        label = QLabel("Раздел в разработке")
-        label.setObjectName("placeholderText")
-        page_layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
-        page_layout.addStretch()
-        self.tabs.addTab(page, "Статистика")
+        self.tabs.addTab(self._placeholder_page(), "Статистика")
         self.ai_widget = AIAnalysisWidget()
         self.tabs.addTab(self.ai_widget, "AI анализ")
-        for name in ("Экспорт",):
-            page = QWidget()
-            page.setObjectName("placeholderPage")
-            page_layout = QVBoxLayout(page)
-            page_layout.addStretch()
-            label = QLabel("Раздел в разработке")
-            label.setObjectName("placeholderText")
-            page_layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
-            page_layout.addStretch()
-            self.tabs.addTab(page, name)
+        self.tabs.addTab(self._placeholder_page(), "Экспорт")
         self.tabs.currentChanged.connect(self._on_tab_changed)
 
         sidebar = QFrame()
@@ -200,6 +183,18 @@ class MainWindow(QMainWindow):
         self.settings_dialog.show()
         self.settings_dialog.raise_()
         self.settings_dialog.activateWindow()
+
+    @staticmethod
+    def _placeholder_page():
+        page = QWidget()
+        page.setObjectName("placeholderPage")
+        page_layout = QVBoxLayout(page)
+        page_layout.addStretch()
+        label = QLabel("Раздел в разработке")
+        label.setObjectName("placeholderText")
+        page_layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
+        page_layout.addStretch()
+        return page
 
     # === Предпросмотр видео ===
     def _selected_source(self):
