@@ -1,4 +1,4 @@
-"""Send a heatmap-overlay frame and an editable prompt to the vision model."""
+"""Send a heatmap-overlay frame and the configured prompt to the vision model."""
 
 from pathlib import Path
 
@@ -16,16 +16,9 @@ from PyQt6.QtWidgets import (
 )
 
 from src.ai.vision_api import VisionAPI
+from src.config.settings import AI_ANALYSIS_PROMPT
 from src.gui.heatmap_widget import HeatmapWidget
 from src.zones.overlay import draw_zones
-
-
-DEFAULT_PROMPT = (
-    "Проанализируй кадр видео с наложенной тепловой картой. "
-    "Опиши зоны наибольшей активности, возможные причины их появления "
-    "и практические выводы. Опирайся только на видимое на изображении; "
-    "если данных недостаточно, укажи это."
-)
 
 
 class VisionAnalysisThread(QThread):
@@ -46,10 +39,11 @@ class VisionAnalysisThread(QThread):
 
 
 class AIAnalysisWidget(QWidget):
-    def __init__(self, output_dir: Path | None = None, zones_provider=None):
+    def __init__(self, output_dir: Path | None = None, zones_provider=None, prompt_provider=None):
         super().__init__()
         self.output_dir = Path(output_dir or Path("data/output"))
         self.zones_provider = zones_provider or (lambda frame: [])
+        self.prompt_provider = prompt_provider or (lambda: AI_ANALYSIS_PROMPT)
         self.overlay_frame = None
         self.zones = []
         self.worker = None
@@ -86,11 +80,13 @@ class AIAnalysisWidget(QWidget):
         prompt_title = QLabel("Запрос к модели")
         prompt_title.setObjectName("sectionTitle")
         prompt_layout.addWidget(prompt_title)
-        self.prompt_input = QTextEdit()
-        self.prompt_input.setObjectName("promptInput")
-        self.prompt_input.setPlainText(DEFAULT_PROMPT)
-        self.prompt_input.setMinimumHeight(125)
-        prompt_layout.addWidget(self.prompt_input)
+        prompt_hint = QLabel(
+            "Промпт задаётся в «Настройках». Номера и названия отмеченных зон "
+            "добавляются к нему автоматически."
+        )
+        prompt_hint.setObjectName("zoneHint")
+        prompt_hint.setWordWrap(True)
+        prompt_layout.addWidget(prompt_hint)
         self.analyze_btn = QPushButton("Анализировать кадр")
         self.analyze_btn.setEnabled(False)
         self.analyze_btn.clicked.connect(self.start_analysis)
@@ -145,7 +141,7 @@ class AIAnalysisWidget(QWidget):
     def start_analysis(self) -> None:
         if self._is_running():
             return
-        prompt = self.prompt_input.toPlainText().strip()
+        prompt = self.prompt_provider().strip()
         if not prompt:
             self.status_label.setText("Введите промпт для анализа.")
             return

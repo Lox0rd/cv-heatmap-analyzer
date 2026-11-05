@@ -21,6 +21,12 @@ HEATMAP_POINT_RADIUS = 10
 HEATMAP_BLUR_SIGMA = 15
 HEATMAP_ALPHA = 0.5
 HEATMAP_COLORMAP_NAME = "Jet"
+AI_ANALYSIS_PROMPT = (
+    "Проанализируй кадр видео с наложенной тепловой картой. "
+    "Опиши зоны наибольшей активности, возможные причины их появления "
+    "и практические выводы. Опирайся только на видимое на изображении; "
+    "если данных недостаточно, укажи это."
+)
 
 # Processing UI
 DEFAULT_SKIP_FRAMES = 0

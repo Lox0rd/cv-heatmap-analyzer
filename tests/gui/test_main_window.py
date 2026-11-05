@@ -37,9 +37,12 @@ def test_main_window_initializes(window):
 def test_processing_options_open_in_settings_dialog(window):
     assert window.settings_widget.params_group.parentWidget() is window.settings_dialog
     assert window.settings_widget.display_group.parentWidget() is window.settings_dialog
+    assert window.settings_widget.ai_group.parentWidget() is window.settings_dialog
     assert window.settings_widget.source_group.parentWidget() is window.settings_widget
     window.settings_button.click()
     assert window.settings_dialog.isVisible()
+    window.settings_widget.ai_prompt_input.setPlainText("Проверь отмеченные зоны")
+    assert window.ai_widget.prompt_provider() == "Проверь отмеченные зоны"
     window.settings_dialog.close()
 
 
@@ -118,6 +121,21 @@ def test_ai_does_not_apply_zones_to_different_frame_size(window, tmp_path):
     )
 
     assert window._zones_for_ai(np.zeros((50, 50, 3), dtype=np.uint8)) == []
+
+
+def test_analysis_passes_source_and_zone_store_to_statistics(window, monkeypatch):
+    factory = MagicMock()
+    monkeypatch.setattr("src.gui.main_window.ProcessingThread", factory)
+
+    window.start_processing(
+        sources=["sample.mp4"], confidence=0.5, alpha=0.5,
+        skip_frames=0, colormap_name="Jet", show_detections=True,
+        show_heatmap=True,
+    )
+
+    options = factory.call_args.kwargs
+    assert options["source_key"].endswith("sample.mp4")
+    assert options["zone_store_path"] == window.zones_widget.store.path
 
 
 def test_play_preview_rejects_non_file_source(

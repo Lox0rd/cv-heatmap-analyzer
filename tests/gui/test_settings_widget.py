@@ -20,6 +20,7 @@ def test_widget_initializes(widget):
     assert widget.stop_btn.text() == "Стоп"
     assert widget.play_btn.text() == "▶ Play"
     assert widget.source_type_combo.currentData() == "file"
+    assert "тепловой картой" in widget.ai_prompt_input.toPlainText()
 
 
 def test_file_source_is_visible(widget):

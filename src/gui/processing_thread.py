@@ -1,15 +1,18 @@
 # src/gui/processing_thread.py
 import time
+from pathlib import Path
 
 import cv2
 import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
 
 from src.detection.detector import YOLODetector
+from src.analysis.zone_statistics import ZoneStatistics
 from src.detection.tracker import ObjectTracker
 from src.heatmap.generator import HeatmapGenerator
 from src.heatmap.renderer import HeatmapRenderer
 from src.video.video_processor import VideoProcessor
+from src.zones.zone_store import ZoneStore
 
 COLORMAPS = {
     "Jet": cv2.COLORMAP_JET,
@@ -35,6 +38,7 @@ class ProcessingThread(QThread):
     total_frames_changed = pyqtSignal(int)
     is_file_source = pyqtSignal(bool)
     result_saved = pyqtSignal(str)
+    statistics_saved = pyqtSignal(str)
     finished = pyqtSignal()
 
     def __init__(
@@ -47,6 +51,9 @@ class ProcessingThread(QThread):
         show_detections: bool = True,
         show_heatmap: bool = True,
         selected_objects: list | None = None,
+        source_key: str | None = None,
+        zone_store_path: Path | None = None,
+        statistics_path: Path | None = None,
     ):
         super().__init__()
         self.sources = sources
@@ -57,6 +64,9 @@ class ProcessingThread(QThread):
         self.show_detections = show_detections
         self.show_heatmap = show_heatmap
         self.selected_objects = selected_objects
+        self.source_key = source_key
+        self.zone_store_path = Path(zone_store_path or "data/output/zones.json")
+        self.statistics_path = Path(statistics_path or "data/output/zone_statistics.json")
 
         self._is_running = True
         self._seek_position = None  # Позиция для перемотки
@@ -86,6 +96,16 @@ class ProcessingThread(QThread):
                 width=info["width"], height=info["height"]
             )
             heatmap_renderer = HeatmapRenderer()
+            statistics = None
+            if self.source_key:
+                try:
+                    zones = ZoneStore(self.zone_store_path).load(
+                        self.source_key, info["width"], info["height"]
+                    ).get_zones()
+                except (OSError, ValueError, KeyError, TypeError) as error:
+                    self.status_update.emit(f"Не удалось загрузить зоны: {error}")
+                    zones = []
+                statistics = ZoneStatistics(zones, info["fps"], self.source_key)
 
             colormap = COLORMAPS.get(self.colormap_name, cv2.COLORMAP_JET)
 
@@ -137,6 +157,12 @@ class ProcessingThread(QThread):
                     objects=self.selected_objects,
                     confidence=self.confidence,
                 )
+                if statistics is not None:
+                    statistics_frame = (
+                        current_pos if info["source_type"] == "file"
+                        else int((current_time - start_time) * info["fps"])
+                    )
+                    statistics.add_frame(statistics_frame, detections)
                 heatmap_generator.update(detections)
 
                 # === ADDED: Calculate actual heatmap intensity (amount of "red") ===
@@ -211,6 +237,12 @@ class ProcessingThread(QThread):
                 raise IOError("Не удалось сохранить результат анализа с наложением")
                 
             self.status_update.emit(f"✓ Кадр с наложением: {overlay_path}")
+            if statistics is not None:
+                try:
+                    statistics.save(self.statistics_path)
+                    self.statistics_saved.emit(str(self.statistics_path))
+                except OSError as error:
+                    self.status_update.emit(f"Не удалось сохранить статистику: {error}")
             self.result_saved.emit(overlay_path)
             self.finished.emit()
 
