@@ -169,9 +169,9 @@ class MainWindow(QMainWindow):
         viewer_title.setObjectName("sectionTitle")
         viewer_heading.addWidget(viewer_title)
         viewer_heading.addStretch()
-        viewer_badge = QLabel("●  ОБЛАСТЬ ПРОСМОТРА")
-        viewer_badge.setObjectName("viewerBadge")
-        viewer_heading.addWidget(viewer_badge)
+        self.people_count_label = QLabel("Людей в кадре: —")
+        self.people_count_label.setObjectName("viewerBadge")
+        viewer_heading.addWidget(self.people_count_label)
         viewer_layout.addLayout(viewer_heading)
 
         self.video_widget = VideoWidget()
@@ -368,6 +368,7 @@ class MainWindow(QMainWindow):
             self._display_source_key = f"{source_type}:{source}"
         self._zones_loaded_for = None
         self.settings_widget.set_analysis_running(True)
+        self.people_count_label.setText("Людей в кадре: 0")
         self.video_widget.set_placeholder("Обработка видео...")
         self.settings_widget.set_status("Запуск обработки...")
         self.settings_widget.set_seek_enabled(False)
@@ -392,6 +393,7 @@ class MainWindow(QMainWindow):
         self.thread.is_file_source.connect(self.settings_widget.set_seek_enabled)
         self.thread.result_saved.connect(self._on_result_saved)
         self.thread.statistics_saved.connect(self._on_statistics_saved)
+        self.thread.people_count_updated.connect(self._set_people_count)
         self.thread.finished.connect(self.on_finished)
 
         self.thread.start()
@@ -437,6 +439,9 @@ class MainWindow(QMainWindow):
     def _on_statistics_saved(self, path: str):
         self.statistics_widget.statistics_path = Path(path)
         self.statistics_widget.refresh()
+
+    def _set_people_count(self, count: int):
+        self.people_count_label.setText(f"Людей в кадре: {count}")
 
     def on_finished(self):
         self.settings_widget.set_analysis_running(False)

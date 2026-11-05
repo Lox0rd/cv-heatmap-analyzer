@@ -170,21 +170,24 @@ def test_processing_thread_saves_zone_statistics(monkeypatch, tmp_path):
     monkeypatch.setattr(processing_module, "HeatmapRenderer", FakeRenderer)
     monkeypatch.setattr(processing_module.cv2, "imwrite", lambda *_: True)
     paths = []
+    people_counts = []
     thread = ProcessingThread(
         sources=["sample.mp4"], confidence=0.5, alpha=0.6, skip_frames=0,
         selected_objects=["person"], source_key="file:sample.mp4",
         zone_store_path=zone_path, statistics_path=statistics_path,
     )
     thread.statistics_saved.connect(paths.append)
+    thread.people_count_updated.connect(people_counts.append)
 
     thread.run()
 
     assert paths == [str(statistics_path)]
+    assert people_counts == [1]
     result = json.loads(statistics_path.read_text(encoding="utf-8"))
     assert result["zones"][0] == {
-        "name": "Вход", "observations": 1, "unique_objects": 1
+        "name": "Вход", "unique_people": 1, "entries": 0, "peak_people": 1
     }
-    assert result["timeline"][0]["zones"] == {"Вход": 1}
+    assert result["timeline"][0]["zone_people_peak"] == {"Вход": 1}
 
 
 def test_stream_statistics_use_elapsed_time(monkeypatch, tmp_path):

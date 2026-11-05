@@ -29,6 +29,7 @@ def test_main_window_initializes(window):
     assert window.windowTitle() == "CV Heatmap Analyzer"
     assert window.thread is None
     assert window.preview_thread is None
+    assert window.people_count_label.text() == "Людей в кадре: —"
     assert [window.tabs.tabText(index) for index in range(window.tabs.count())] == [
         "Анализ", "Зоны", "Карта", "Статистика", "AI анализ", "Экспорт"
     ]
@@ -136,6 +137,8 @@ def test_analysis_passes_source_and_zone_store_to_statistics(window, monkeypatch
     options = factory.call_args.kwargs
     assert options["source_key"].endswith("sample.mp4")
     assert options["zone_store_path"] == window.zones_widget.store.path
+    window._set_people_count(3)
+    assert window.people_count_label.text() == "Людей в кадре: 3"
 
 
 def test_play_preview_rejects_non_file_source(
