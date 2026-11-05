@@ -1,9 +1,11 @@
 
 from unittest.mock import MagicMock
 
+import numpy as np
 import pytest
 
 from src.gui.main_window import MainWindow
+from src.zones.zone_store import ZoneStore
 
 
 @pytest.fixture
@@ -24,6 +26,32 @@ def test_main_window_initializes(window):
     assert window.windowTitle() == "CV Heatmap Analyzer"
     assert window.thread is None
     assert window.preview_thread is None
+    assert [window.tabs.tabText(index) for index in range(window.tabs.count())] == [
+        "Анализ", "Зоны", "Карта", "Статистика", "AI анализ", "Экспорт"
+    ]
+
+
+def test_saved_zone_appears_on_analysis_video(window, monkeypatch, tmp_path):
+    frame = np.zeros((100, 200, 3), dtype=np.uint8)
+    capture = MagicMock()
+    capture.isOpened.return_value = True
+    capture.read.return_value = (True, frame)
+    monkeypatch.setattr("src.gui.main_window.cv2.VideoCapture", lambda _: capture)
+    window.zones_widget.store = ZoneStore(tmp_path / "zones.json")
+    window.settings_widget.source_input.setText("sample.mp4")
+
+    window.tabs.setCurrentIndex(1)
+    window.zones_widget.name_input.setText("Вход")
+    window.zones_widget.begin_zone()
+    for point in ((10, 10), (80, 10), (80, 60)):
+        window.zones_widget._add_point(*point)
+    window.zones_widget.save_zone()
+
+    _, window._display_source_key = window._selected_source()
+    window._show_frame(frame)
+    assert [zone.name for zone in window.video_widget.zones] == ["Вход"]
+    assert window.video_widget.last_frame is frame
+    capture.release.assert_called()
 
 
 def test_play_preview_rejects_non_file_source(

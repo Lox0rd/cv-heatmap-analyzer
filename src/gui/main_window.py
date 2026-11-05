@@ -1,5 +1,6 @@
 from pathlib import Path
 
+import cv2
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication,
@@ -17,6 +18,7 @@ from src.gui.preview_thread import VideoPreviewThread
 from src.gui.processing_thread import ProcessingThread
 from src.gui.settings_widget import SettingsWidget
 from src.gui.video_widget import VideoWidget
+from src.gui.zones_widget import ZonesWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -28,6 +30,8 @@ class MainWindow(QMainWindow):
 
         self.thread = None
         self.preview_thread = None
+        self._display_source_key = None
+        self._zones_loaded_for = None
 
         self._load_styles()
         self._init_ui()
@@ -93,7 +97,11 @@ class MainWindow(QMainWindow):
         self.tabs.setObjectName("mainTabs")
         root.addWidget(self.tabs, stretch=1)
         self.tabs.addTab(workspace, "Анализ")
-        for name in ("Зоны", "Карта", "Статистика", "AI анализ", "Экспорт"):
+        self.zones_widget = ZonesWidget()
+        self.zones_widget.frame_requested.connect(self._load_zone_frame)
+        self.zones_widget.zones_changed.connect(self._on_zones_changed)
+        self.tabs.addTab(self.zones_widget, "Зоны")
+        for name in ("Карта", "Статистика", "AI анализ", "Экспорт"):
             page = QWidget()
             page.setObjectName("placeholderPage")
             page_layout = QVBoxLayout(page)
@@ -103,6 +111,7 @@ class MainWindow(QMainWindow):
             page_layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
             page_layout.addStretch()
             self.tabs.addTab(page, name)
+        self.tabs.currentChanged.connect(self._on_tab_changed)
 
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
@@ -154,6 +163,68 @@ class MainWindow(QMainWindow):
         self.settings_widget.seek_requested.connect(self._on_seek)
 
     # === Предпросмотр видео ===
+    def _selected_source(self):
+        source = self.settings_widget._get_selected_source()
+        source_type = self.settings_widget.source_type_combo.currentData()
+        if source_type == "file":
+            return source, f"file:{Path(source).expanduser().resolve()}"
+        return source, f"{source_type}:{source}"
+
+    def _on_tab_changed(self, index: int):
+        if index == 1:
+            try:
+                _, key = self._selected_source()
+            except ValueError:
+                key = None
+            if key == self.zones_widget.source and self.zones_widget.canvas.frame is not None:
+                return
+            self._load_zone_frame()
+
+    def _load_zone_frame(self):
+        try:
+            source, key = self._selected_source()
+        except ValueError as error:
+            self.zones_widget.clear_context(str(error))
+            return
+
+        frame = None
+        if self.settings_widget.source_type_combo.currentData() == "file":
+            capture = cv2.VideoCapture(str(source))
+            try:
+                if capture.isOpened():
+                    capture.set(cv2.CAP_PROP_POS_FRAMES, self.settings_widget.seek_slider.value())
+                    success, frame = capture.read()
+                    if not success:
+                        frame = None
+            finally:
+                capture.release()
+        elif self._display_source_key == key and self.video_widget.last_frame is not None:
+            frame = self.video_widget.last_frame
+
+        if frame is None:
+            self.zones_widget.clear_context(
+                "Не удалось получить кадр. Для камеры или RTSP сначала запустите анализ."
+            )
+            return
+        self.zones_widget.set_context(key, frame)
+
+    def _on_zones_changed(self):
+        if self._display_source_key == self.zones_widget.source:
+            self.video_widget.set_zones(self.zones_widget.manager.get_zones())
+            self._zones_loaded_for = (*self.zones_widget.frame_size, self._display_source_key)
+
+    def _show_frame(self, frame):
+        height, width = frame.shape[:2]
+        identity = (width, height, self._display_source_key)
+        if self._zones_loaded_for != identity:
+            try:
+                manager = self.zones_widget.store.load(self._display_source_key, width, height)
+                self.video_widget.set_zones(manager.get_zones())
+            except (OSError, ValueError, KeyError, TypeError):
+                self.video_widget.set_zones([])
+            self._zones_loaded_for = identity
+        self.video_widget.update_frame(frame)
+
     def play_preview(self):
         """Запускает воспроизведение или переключает паузу."""
         if self.thread and self.thread.isRunning():
@@ -171,6 +242,9 @@ class MainWindow(QMainWindow):
             self.settings_widget.set_status("Сначала выберите видеофайл.")
             return
 
+        _, self._display_source_key = self._selected_source()
+        self._zones_loaded_for = None
+
         if self.preview_thread is not None and self.preview_thread.isRunning():
             playing = self.preview_thread.toggle_playback()
             self.settings_widget.set_preview_playing(playing)
@@ -184,7 +258,7 @@ class MainWindow(QMainWindow):
 
         self.preview_thread = VideoPreviewThread(source, start_frame=start_frame)
 
-        self.preview_thread.frame_ready.connect(self.video_widget.update_frame)
+        self.preview_thread.frame_ready.connect(self._show_frame)
         self.preview_thread.position_changed.connect(self.settings_widget.set_current_frame)
         self.preview_thread.total_frames_changed.connect(self.settings_widget.set_total_frames)
         self.preview_thread.error_occurred.connect(self.settings_widget.set_status)
@@ -217,6 +291,13 @@ class MainWindow(QMainWindow):
         selected_objects: list | None = None,
     ):
         self._stop_preview()
+        source_type = self.settings_widget.source_type_combo.currentData()
+        source = sources[0]
+        if source_type == "file":
+            self._display_source_key = f"file:{Path(source).expanduser().resolve()}"
+        else:
+            self._display_source_key = f"{source_type}:{source}"
+        self._zones_loaded_for = None
         self.settings_widget.set_analysis_running(True)
         self.video_widget.set_placeholder("Обработка видео...")
         self.settings_widget.set_status("Запуск обработки...")
@@ -233,7 +314,7 @@ class MainWindow(QMainWindow):
             selected_objects=selected_objects,
         )
 
-        self.thread.frame_ready.connect(self.video_widget.update_frame)
+        self.thread.frame_ready.connect(self._show_frame)
         self.thread.status_update.connect(self.settings_widget.set_status)
         self.thread.frame_position_changed.connect(self.settings_widget.set_current_frame)
         self.thread.total_frames_changed.connect(self.settings_widget.set_total_frames)
