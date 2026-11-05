@@ -17,14 +17,15 @@ from PyQt6.QtWidgets import (
     QWidget,
 )
 
-from src.gui.preview_thread import VideoPreviewThread
 from src.gui.ai_analysis_widget import AIAnalysisWidget
 from src.gui.map_widget import MapWidget
+from src.gui.preview_thread import VideoPreviewThread
 from src.gui.processing_thread import ProcessingThread
 from src.gui.settings_widget import SettingsWidget
 from src.gui.statistics_widget import StatisticsWidget
 from src.gui.video_widget import VideoWidget
 from src.gui.zones_widget import ZonesWidget
+
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -48,10 +49,7 @@ class MainWindow(QMainWindow):
     def _load_styles(self):
         """Загружает стили из внешнего QSS-файла."""
         style_path = (
-            Path(__file__).resolve().parents[2]
-            / "resources"
-            / "styles"
-            / "style.qss"
+            Path(__file__).resolve().parents[2] / "resources" / "styles" / "style.qss"
         )
 
         app = QApplication.instance()
@@ -64,9 +62,7 @@ class MainWindow(QMainWindow):
             )
             app.setStyleSheet(style)
         else:
-            print(
-                f"[WARNING] Файл стилей не найден: {style_path}"
-            )
+            print(f"[WARNING] Файл стилей не найден: {style_path}")
 
     def _init_ui(self):
         central_widget = QWidget()
@@ -181,7 +177,6 @@ class MainWindow(QMainWindow):
         workspace_layout.addWidget(viewer, stretch=1)
         workspace_layout.addWidget(sidebar)
 
-
         # Сигналы анализа.
         self.settings_widget.start_requested.connect(self.start_processing)
         self.settings_widget.stop_requested.connect(self.stop_processing)
@@ -226,15 +221,22 @@ class MainWindow(QMainWindow):
                 _, key = self._selected_source()
             except ValueError:
                 key = None
-            if key == self.zones_widget.source and self.zones_widget.canvas.frame is not None:
+            if (
+                key == self.zones_widget.source
+                and self.zones_widget.canvas.frame is not None
+            ):
                 return
             self._load_zone_frame()
 
     def _refresh_results(self):
-        """Rebuild saved results for the selected file using current zones and settings."""
+        """Rebuild results for the selected file with current settings."""
         if self.thread is not None and self.thread.isRunning():
-            self.map_widget.status_label.setText("Анализ уже выполняется. Дождитесь завершения.")
-            self.statistics_widget.status_label.setText("Анализ уже выполняется. Дождитесь завершения.")
+            self.map_widget.status_label.setText(
+                "Анализ уже выполняется. Дождитесь завершения."
+            )
+            self.statistics_widget.status_label.setText(
+                "Анализ уже выполняется. Дождитесь завершения."
+            )
             return
         if self.settings_widget.source_type_combo.currentData() != "file":
             self.map_widget.refresh()
@@ -248,13 +250,21 @@ class MainWindow(QMainWindow):
         except ValueError as error:
             message = str(error)
         else:
-            message = None if Path(source).expanduser().is_file() else "Видеофайл не найден. Выберите существующий файл."
+            message = (
+                None
+                if Path(source).expanduser().is_file()
+                else "Видеофайл не найден. Выберите существующий файл."
+            )
         if message:
             self.map_widget.status_label.setText(message)
             self.statistics_widget.status_label.setText(message)
             return
-        self.map_widget.status_label.setText("Повторный анализ видео. Карта обновится после завершения.")
-        self.statistics_widget.status_label.setText("Повторный анализ видео. Статистика обновится после завершения.")
+        self.map_widget.status_label.setText(
+            "Повторный анализ видео. Карта обновится после завершения."
+        )
+        self.statistics_widget.status_label.setText(
+            "Повторный анализ видео. Статистика обновится после завершения."
+        )
         self.settings_widget._on_start()
 
     def _load_zone_frame(self):
@@ -269,18 +279,24 @@ class MainWindow(QMainWindow):
             capture = cv2.VideoCapture(str(source))
             try:
                 if capture.isOpened():
-                    capture.set(cv2.CAP_PROP_POS_FRAMES, self.settings_widget.seek_slider.value())
+                    capture.set(
+                        cv2.CAP_PROP_POS_FRAMES,
+                        self.settings_widget.seek_slider.value(),
+                    )
                     success, frame = capture.read()
                     if not success:
                         frame = None
             finally:
                 capture.release()
-        elif self._display_source_key == key and self.video_widget.last_frame is not None:
+        elif (
+            self._display_source_key == key and self.video_widget.last_frame is not None
+        ):
             frame = self.video_widget.last_frame
 
         if frame is None:
             self.zones_widget.clear_context(
-                "Не удалось получить кадр. Для камеры или RTSP сначала запустите анализ."
+                "Не удалось получить кадр. Для камеры или RTSP "
+                "сначала запустите анализ."
             )
             return
         self.zones_widget.set_context(key, frame)
@@ -288,7 +304,10 @@ class MainWindow(QMainWindow):
     def _on_zones_changed(self):
         if self._display_source_key == self.zones_widget.source:
             self.video_widget.set_zones(self.zones_widget.manager.get_zones())
-            self._zones_loaded_for = (*self.zones_widget.frame_size, self._display_source_key)
+            self._zones_loaded_for = (
+                *self.zones_widget.frame_size,
+                self._display_source_key,
+            )
 
     def _zones_for_ai(self, frame):
         source_key = self._analysis_result_source_key
@@ -315,7 +334,9 @@ class MainWindow(QMainWindow):
         identity = (width, height, self._display_source_key)
         if self._zones_loaded_for != identity:
             try:
-                manager = self.zones_widget.store.load(self._display_source_key, width, height)
+                manager = self.zones_widget.store.load(
+                    self._display_source_key, width, height
+                )
                 self.video_widget.set_zones(manager.get_zones())
             except (OSError, ValueError, KeyError, TypeError):
                 self.video_widget.set_zones([])
@@ -356,8 +377,12 @@ class MainWindow(QMainWindow):
         self.preview_thread = VideoPreviewThread(source, start_frame=start_frame)
 
         self.preview_thread.frame_ready.connect(self._show_frame)
-        self.preview_thread.position_changed.connect(self.settings_widget.set_current_frame)
-        self.preview_thread.total_frames_changed.connect(self.settings_widget.set_total_frames)
+        self.preview_thread.position_changed.connect(
+            self.settings_widget.set_current_frame
+        )
+        self.preview_thread.total_frames_changed.connect(
+            self.settings_widget.set_total_frames
+        )
         self.preview_thread.error_occurred.connect(self.settings_widget.set_status)
         self.preview_thread.playback_finished.connect(self._on_preview_finished)
 
@@ -420,7 +445,9 @@ class MainWindow(QMainWindow):
 
         self.thread.frame_ready.connect(self._show_frame)
         self.thread.status_update.connect(self.settings_widget.set_status)
-        self.thread.frame_position_changed.connect(self.settings_widget.set_current_frame)
+        self.thread.frame_position_changed.connect(
+            self.settings_widget.set_current_frame
+        )
         self.thread.total_frames_changed.connect(self.settings_widget.set_total_frames)
         self.thread.is_file_source.connect(self.settings_widget.set_seek_enabled)
         self.thread.result_saved.connect(self._on_result_saved)
@@ -448,16 +475,22 @@ class MainWindow(QMainWindow):
     def _on_result_saved(self, path: str):
         self._analysis_result_path = path
         self._analysis_result_source_key = self._display_source_key
-        if self._analysis_result_source_key and self.video_widget.last_frame is not None:
+        if (
+            self._analysis_result_source_key
+            and self.video_widget.last_frame is not None
+        ):
             height, width = self.video_widget.last_frame.shape[:2]
             metadata_path = Path(path).with_name("heatmap_overlay.source.json")
             temporary = metadata_path.with_suffix(".tmp")
             try:
                 temporary.write_text(
-                    json.dumps({
-                        "source_key": self._analysis_result_source_key,
-                        "size": [width, height],
-                    }, ensure_ascii=False),
+                    json.dumps(
+                        {
+                            "source_key": self._analysis_result_source_key,
+                            "size": [width, height],
+                        },
+                        ensure_ascii=False,
+                    ),
                     encoding="utf-8",
                 )
                 temporary.replace(metadata_path)
@@ -485,7 +518,9 @@ class MainWindow(QMainWindow):
                 f"Обработка завершена. Тепловая карта: {self._analysis_result_path}"
             )
         else:
-            self.map_widget.status_label.setText("Карта не обновлена. Проверьте ошибку на вкладке «Анализ».")
+            self.map_widget.status_label.setText(
+                "Карта не обновлена. Проверьте ошибку на вкладке «Анализ»."
+            )
         if not self._statistics_result_saved:
             self.statistics_widget.status_label.setText(
                 "Статистика не обновлена. Проверьте ошибку на вкладке «Анализ»."

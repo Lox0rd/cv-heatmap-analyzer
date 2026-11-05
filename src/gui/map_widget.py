@@ -3,7 +3,14 @@
 from pathlib import Path
 
 import cv2
-from PyQt6.QtWidgets import QFrame, QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
+from PyQt6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QVBoxLayout,
+    QWidget,
+)
 
 from src.gui.heatmap_widget import HeatmapWidget
 
@@ -67,7 +74,7 @@ class MapWidget(QWidget):
                 found += 1
         self.status_label.setText(
             "Показаны результаты последнего анализа."
-            if found == 2 else
-            "Нет результатов анализа. Проверьте источник видео и запустите анализ."
+            if found == 2
+            else "Нет результатов анализа. Проверьте источник видео и запустите анализ."
         )
         return found == 2
