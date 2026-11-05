@@ -39,6 +39,7 @@ class MainWindow(QMainWindow):
         self._display_source_key = None
         self._zones_loaded_for = None
         self._analysis_result_path = None
+        self._statistics_result_saved = False
         self._analysis_result_source_key = None
 
         self._load_styles()
@@ -113,9 +114,9 @@ class MainWindow(QMainWindow):
         self.zones_widget.frame_requested.connect(self._load_zone_frame)
         self.zones_widget.zones_changed.connect(self._on_zones_changed)
         self.tabs.addTab(self.zones_widget, "Зоны")
-        self.map_widget = MapWidget()
+        self.map_widget = MapWidget(refresh_action=self._refresh_results)
         self.tabs.addTab(self.map_widget, "Карта")
-        self.statistics_widget = StatisticsWidget()
+        self.statistics_widget = StatisticsWidget(refresh_action=self._refresh_results)
         self.tabs.addTab(self.statistics_widget, "Статистика")
         self.ai_widget = AIAnalysisWidget(
             zones_provider=self._zones_for_ai,
@@ -169,9 +170,9 @@ class MainWindow(QMainWindow):
         viewer_title.setObjectName("sectionTitle")
         viewer_heading.addWidget(viewer_title)
         viewer_heading.addStretch()
-        viewer_badge = QLabel("●  ОБЛАСТЬ ПРОСМОТРА")
-        viewer_badge.setObjectName("viewerBadge")
-        viewer_heading.addWidget(viewer_badge)
+        self.people_count_label = QLabel("Людей в кадре: —")
+        self.people_count_label.setObjectName("viewerBadge")
+        viewer_heading.addWidget(self.people_count_label)
         viewer_layout.addLayout(viewer_heading)
 
         self.video_widget = VideoWidget()
@@ -213,9 +214,10 @@ class MainWindow(QMainWindow):
         return source, f"{source_type}:{source}"
 
     def _on_tab_changed(self, index: int):
-        if index == 2:
+        processing = self.thread is not None and self.thread.isRunning()
+        if index == 2 and not processing:
             self.map_widget.refresh()
-        if index == 3:
+        if index == 3 and not processing:
             self.statistics_widget.refresh()
         if index == 4:
             self.ai_widget.refresh_frame()
@@ -227,6 +229,33 @@ class MainWindow(QMainWindow):
             if key == self.zones_widget.source and self.zones_widget.canvas.frame is not None:
                 return
             self._load_zone_frame()
+
+    def _refresh_results(self):
+        """Rebuild saved results for the selected file using current zones and settings."""
+        if self.thread is not None and self.thread.isRunning():
+            self.map_widget.status_label.setText("Анализ уже выполняется. Дождитесь завершения.")
+            self.statistics_widget.status_label.setText("Анализ уже выполняется. Дождитесь завершения.")
+            return
+        if self.settings_widget.source_type_combo.currentData() != "file":
+            self.map_widget.refresh()
+            self.statistics_widget.refresh()
+            message = "Для пересчёта потока запустите анализ на вкладке «Анализ»."
+            self.map_widget.status_label.setText(message)
+            self.statistics_widget.status_label.setText(message)
+            return
+        try:
+            source = self.settings_widget._get_selected_source()
+        except ValueError as error:
+            message = str(error)
+        else:
+            message = None if Path(source).expanduser().is_file() else "Видеофайл не найден. Выберите существующий файл."
+        if message:
+            self.map_widget.status_label.setText(message)
+            self.statistics_widget.status_label.setText(message)
+            return
+        self.map_widget.status_label.setText("Повторный анализ видео. Карта обновится после завершения.")
+        self.statistics_widget.status_label.setText("Повторный анализ видео. Статистика обновится после завершения.")
+        self.settings_widget._on_start()
 
     def _load_zone_frame(self):
         try:
@@ -360,6 +389,7 @@ class MainWindow(QMainWindow):
     ):
         self._stop_preview()
         self._analysis_result_path = None
+        self._statistics_result_saved = False
         source_type = self.settings_widget.source_type_combo.currentData()
         source = sources[0]
         if source_type == "file":
@@ -368,6 +398,9 @@ class MainWindow(QMainWindow):
             self._display_source_key = f"{source_type}:{source}"
         self._zones_loaded_for = None
         self.settings_widget.set_analysis_running(True)
+        self.map_widget.refresh_btn.setEnabled(False)
+        self.statistics_widget.refresh_btn.setEnabled(False)
+        self.people_count_label.setText("Людей в кадре: 0")
         self.video_widget.set_placeholder("Обработка видео...")
         self.settings_widget.set_status("Запуск обработки...")
         self.settings_widget.set_seek_enabled(False)
@@ -392,6 +425,7 @@ class MainWindow(QMainWindow):
         self.thread.is_file_source.connect(self.settings_widget.set_seek_enabled)
         self.thread.result_saved.connect(self._on_result_saved)
         self.thread.statistics_saved.connect(self._on_statistics_saved)
+        self.thread.people_count_updated.connect(self._set_people_count)
         self.thread.finished.connect(self.on_finished)
 
         self.thread.start()
@@ -435,14 +469,26 @@ class MainWindow(QMainWindow):
         self.ai_widget.refresh_frame()
 
     def _on_statistics_saved(self, path: str):
+        self._statistics_result_saved = True
         self.statistics_widget.statistics_path = Path(path)
         self.statistics_widget.refresh()
 
+    def _set_people_count(self, count: int):
+        self.people_count_label.setText(f"Людей в кадре: {count}")
+
     def on_finished(self):
         self.settings_widget.set_analysis_running(False)
+        self.map_widget.refresh_btn.setEnabled(True)
+        self.statistics_widget.refresh_btn.setEnabled(True)
         if self._analysis_result_path is not None:
             self.settings_widget.set_status(
                 f"Обработка завершена. Тепловая карта: {self._analysis_result_path}"
+            )
+        else:
+            self.map_widget.status_label.setText("Карта не обновлена. Проверьте ошибку на вкладке «Анализ».")
+        if not self._statistics_result_saved:
+            self.statistics_widget.status_label.setText(
+                "Статистика не обновлена. Проверьте ошибку на вкладке «Анализ»."
             )
         self.settings_widget.start_btn.setEnabled(True)
         self.settings_widget.stop_btn.setEnabled(False)

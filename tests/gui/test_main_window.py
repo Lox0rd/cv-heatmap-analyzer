@@ -29,9 +29,55 @@ def test_main_window_initializes(window):
     assert window.windowTitle() == "CV Heatmap Analyzer"
     assert window.thread is None
     assert window.preview_thread is None
+    assert window.people_count_label.text() == "Людей в кадре: —"
     assert [window.tabs.tabText(index) for index in range(window.tabs.count())] == [
         "Анализ", "Зоны", "Карта", "Статистика", "AI анализ", "Экспорт"
     ]
+
+
+def test_refresh_buttons_restart_analysis_of_selected_file(window, monkeypatch, tmp_path):
+    video = tmp_path / "sample.mp4"
+    video.touch()
+    window.settings_widget.source_input.setText(str(video))
+    start = MagicMock()
+    monkeypatch.setattr(window.settings_widget, "_on_start", start)
+
+    window.map_widget.refresh_btn.click()
+    window.statistics_widget.refresh_btn.click()
+
+    assert start.call_count == 2
+    assert "Повторный анализ" in window.map_widget.status_label.text()
+    assert "Повторный анализ" in window.statistics_widget.status_label.text()
+
+
+def test_refresh_buttons_report_missing_source(window, monkeypatch):
+    start = MagicMock()
+    monkeypatch.setattr(window.settings_widget, "_on_start", start)
+    window.settings_widget.source_input.setText("missing-video.mp4")
+
+    window.map_widget.refresh_btn.click()
+
+    start.assert_not_called()
+    assert "Видеофайл не найден" in window.map_widget.status_label.text()
+
+
+def test_map_refresh_starts_processing_thread(window, monkeypatch, tmp_path):
+    video = tmp_path / "sample.mp4"
+    video.touch()
+    window.settings_widget.source_input.setText(str(video))
+    factory = MagicMock()
+    monkeypatch.setattr("src.gui.main_window.ProcessingThread", factory)
+
+    window.map_widget.refresh_btn.click()
+
+    assert factory.call_args.kwargs["sources"] == [str(video)]
+    factory.return_value.start.assert_called_once()
+    assert not window.map_widget.refresh_btn.isEnabled()
+    assert not window.statistics_widget.refresh_btn.isEnabled()
+
+    window.on_finished()
+    assert window.map_widget.refresh_btn.isEnabled()
+    assert window.statistics_widget.refresh_btn.isEnabled()
 
 
 def test_processing_options_open_in_settings_dialog(window):
@@ -136,6 +182,8 @@ def test_analysis_passes_source_and_zone_store_to_statistics(window, monkeypatch
     options = factory.call_args.kwargs
     assert options["source_key"].endswith("sample.mp4")
     assert options["zone_store_path"] == window.zones_widget.store.path
+    window._set_people_count(3)
+    assert window.people_count_label.text() == "Людей в кадре: 3"
 
 
 def test_play_preview_rejects_non_file_source(

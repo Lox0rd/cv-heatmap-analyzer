@@ -39,6 +39,7 @@ class ProcessingThread(QThread):
     is_file_source = pyqtSignal(bool)
     result_saved = pyqtSignal(str)
     statistics_saved = pyqtSignal(str)
+    people_count_updated = pyqtSignal(int)
     finished = pyqtSignal()
 
     def __init__(
@@ -162,7 +163,8 @@ class ProcessingThread(QThread):
                         current_pos if info["source_type"] == "file"
                         else int((current_time - start_time) * info["fps"])
                     )
-                    statistics.add_frame(statistics_frame, detections)
+                    people_in_frame = statistics.add_frame(statistics_frame, detections)
+                    self.people_count_updated.emit(people_in_frame)
                 heatmap_generator.update(detections)
 
                 # === ADDED: Calculate actual heatmap intensity (amount of "red") ===

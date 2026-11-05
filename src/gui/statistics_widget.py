@@ -7,6 +7,7 @@ from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QColor, QPainter, QPen, QPixmap, QPolygonF
 from PyQt6.QtWidgets import (
     QFrame,
+    QHeaderView,
     QHBoxLayout,
     QLabel,
     QPushButton,
@@ -62,7 +63,7 @@ class ActivityChart(QLabel):
         left, top = 45, 30
         right, bottom = self.width() - 20, self.height() - 35
         width, height = max(1, right - left), max(1, bottom - top)
-        maximum = max(1, max(row["total"] for row in self.timeline))
+        maximum = max(1, max(row["people_in_frame_peak"] for row in self.timeline))
         seconds = [row["second"] for row in self.timeline]
         first, last = min(seconds), max(seconds)
         span = max(1, last - first)
@@ -77,10 +78,10 @@ class ActivityChart(QLabel):
         painter.drawText(left, self.height() - 8, f"{first} с")
         painter.drawText(right - 35, self.height() - 8, f"{last} с")
 
-        series = [("Всего", "total", CHART_COLORS[0])]
+        series = [("В кадре", None, CHART_COLORS[0])]
         visible_count = max(1, min(4, (self.width() - left) // 105 - 1))
         visible_zones = sorted(
-            self.zones, key=lambda zone: zone["observations"], reverse=True
+            self.zones, key=lambda zone: zone["unique_people"], reverse=True
         )[:visible_count]
         series.extend(
             (zone["name"], zone["name"], CHART_COLORS[(index + 1) % len(CHART_COLORS)])
@@ -89,7 +90,10 @@ class ActivityChart(QLabel):
         for index, (name, key, color) in enumerate(series):
             points = []
             for row in self.timeline:
-                value = row["total"] if key == "total" else row["zones"].get(key, 0)
+                value = (
+                    row["people_in_frame_peak"] if key is None
+                    else row["zone_people_peak"].get(key, 0)
+                )
                 x = left + (row["second"] - first) * width / span
                 y = bottom - value * height / maximum
                 points.append(QPointF(x, y))
@@ -104,8 +108,8 @@ class ActivityChart(QLabel):
         if not self.zones:
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Сначала добавьте зоны")
             return
-        zones = sorted(self.zones, key=lambda zone: zone["observations"], reverse=True)[:8]
-        maximum = max(1, max(zone["observations"] for zone in zones))
+        zones = sorted(self.zones, key=lambda zone: zone["entries"], reverse=True)[:8]
+        maximum = max(1, max(zone["entries"] for zone in zones))
         top, row_height = 22, max(22, (self.height() - 32) // len(zones))
         bar_left = min(150, self.width() // 3)
         bar_width = max(10, self.width() - bar_left - 65)
@@ -116,16 +120,16 @@ class ActivityChart(QLabel):
             painter.setPen(Qt.PenStyle.NoPen)
             painter.setBrush(QColor("#E8F4FB"))
             painter.drawRoundedRect(bar_left, y, bar_width, 17, 3, 3)
-            value_width = int(bar_width * zone["observations"] / maximum)
+            value_width = int(bar_width * zone["entries"] / maximum)
             painter.setBrush(QColor(CHART_COLORS[index % len(CHART_COLORS)]))
             if value_width:
                 painter.drawRoundedRect(bar_left, y, value_width, 17, 3, 3)
             painter.setPen(QColor("#18324A"))
-            painter.drawText(bar_left + bar_width + 8, y + 14, str(zone["observations"]))
+            painter.drawText(bar_left + bar_width + 8, y + 14, str(zone["entries"]))
 
 
 class StatisticsWidget(QWidget):
-    def __init__(self, statistics_path: Path | None = None):
+    def __init__(self, statistics_path: Path | None = None, refresh_action=None):
         super().__init__()
         self.statistics_path = Path(statistics_path or "data/output/zone_statistics.json")
         self.data = None
@@ -139,14 +143,15 @@ class StatisticsWidget(QWidget):
         heading.addWidget(title)
         heading.addStretch()
         self.refresh_btn = QPushButton("Обновить данные")
-        self.refresh_btn.clicked.connect(self.refresh)
+        self.refresh_btn.clicked.connect(refresh_action or self.refresh)
         heading.addWidget(self.refresh_btn)
         layout.addLayout(heading)
 
         summary = QHBoxLayout()
         summary.setSpacing(14)
-        self.frames_value = self._summary_card(summary, "Обработано кадров")
-        self.observations_value = self._summary_card(summary, "Наблюдений объектов")
+        self.unique_value = self._summary_card(summary, "Уникальных людей")
+        self.peak_value = self._summary_card(summary, "Максимум в кадре")
+        self.entries_value = self._summary_card(summary, "Входов в зоны")
         self.zones_value = self._summary_card(summary, "Зон интереса")
         layout.addLayout(summary)
 
@@ -157,8 +162,8 @@ class StatisticsWidget(QWidget):
         self.timeline_chart = ActivityChart("timeline")
         self.zone_chart = ActivityChart("zones")
         for name, chart in (
-            ("Активность по времени", self.timeline_chart),
-            ("Наблюдения по зонам", self.zone_chart),
+            ("Люди в кадре по времени", self.timeline_chart),
+            ("Входы в зоны", self.zone_chart),
         ):
             panel = QFrame()
             panel.setObjectName("viewerPanel")
@@ -178,9 +183,9 @@ class StatisticsWidget(QWidget):
         table_title = QLabel("Таблица по зонам")
         table_title.setObjectName("sectionTitle")
         table_layout.addWidget(table_title)
-        self.zone_table = QTableWidget(0, 3)
-        self.zone_table.setHorizontalHeaderLabels(["Зона", "Наблюдений", "Объектов"])
-        self.zone_table.horizontalHeader().setStretchLastSection(True)
+        self.zone_table = QTableWidget(0, 4)
+        self.zone_table.setHorizontalHeaderLabels(["Зона", "Людей", "Входов", "Пик"])
+        self.zone_table.horizontalHeader().setSectionResizeMode(QHeaderView.ResizeMode.Stretch)
         self.zone_table.verticalHeader().setVisible(False)
         self.zone_table.setEditTriggers(QTableWidget.EditTrigger.NoEditTriggers)
         self.zone_table.setSelectionBehavior(QTableWidget.SelectionBehavior.SelectRows)
@@ -213,28 +218,36 @@ class StatisticsWidget(QWidget):
             return False
         try:
             data = json.loads(self.statistics_path.read_text(encoding="utf-8"))
-            if data.get("version") != 1:
-                raise ValueError("Неподдерживаемый формат статистики")
+            if data.get("version") != 2:
+                raise ValueError("Старый формат статистики. Запустите анализ повторно")
             zones = data["zones"]
             timeline = data["timeline"]
-            frames = data["frames_processed"]
-            observations = data["total_observations"]
+            unique_people = data["unique_people"]
+            peak_people = data["peak_people_in_frame"]
+            entries = data["total_zone_entries"]
         except (OSError, ValueError, KeyError, TypeError) as error:
             self._clear(f"Не удалось загрузить статистику: {error}")
             return False
         self.data = data
-        self.frames_value.setText(str(frames))
-        self.observations_value.setText(str(observations))
+        self.unique_value.setText(str(unique_people))
+        self.peak_value.setText(str(peak_people))
+        self.entries_value.setText(str(entries))
         self.zones_value.setText(str(len(zones)))
         self.zone_table.setRowCount(len(zones))
         for row, zone in enumerate(zones):
             for column, value in enumerate((
-                zone["name"], zone["observations"], zone["unique_objects"]
+                zone["name"], zone["unique_people"], zone["entries"], zone["peak_people"]
             )):
                 self.zone_table.setItem(row, column, QTableWidgetItem(str(value)))
         self.timeline_chart.set_data(timeline, zones)
         self.zone_chart.set_data(timeline, zones)
-        message = "Показаны результаты последнего анализа. Наблюдение — объект в одном кадре."
+        message = (
+            f"Обработано кадров: {data['frames_processed']}. "
+            "Люди — уникальные ID треков; вход — наблюдаемый переход в зону."
+        )
+        untracked = data.get("untracked_person_observations", 0)
+        if untracked:
+            message += f" Без ID: {untracked} наблюдений; они учтены в кадре, но не во входах."
         if len(zones) > 4:
             message += " График времени показывает до 4 самых активных зон."
         if len(zones) > 8:
@@ -244,8 +257,9 @@ class StatisticsWidget(QWidget):
 
     def _clear(self, message: str):
         self.data = None
-        self.frames_value.setText("0")
-        self.observations_value.setText("0")
+        self.unique_value.setText("0")
+        self.peak_value.setText("0")
+        self.entries_value.setText("0")
         self.zones_value.setText("0")
         self.zone_table.setRowCount(0)
         self.timeline_chart.set_data([], [])
