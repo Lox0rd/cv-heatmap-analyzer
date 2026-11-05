@@ -67,9 +67,7 @@ class ProcessingThread(QThread):
         self.selected_objects = selected_objects
         self.source_key = source_key
         self.zone_store_path = Path(zone_store_path or "data/output/zones.json")
-        self.statistics_path = Path(
-            statistics_path or "data/output/zone_statistics.json"
-        )
+        self.statistics_path = Path(statistics_path or "data/output/zone_statistics.json")
 
         self._is_running = True
         self._seek_position = None  # Позиция для перемотки
@@ -102,11 +100,9 @@ class ProcessingThread(QThread):
             statistics = None
             if self.source_key:
                 try:
-                    zones = (
-                        ZoneStore(self.zone_store_path)
-                        .load(self.source_key, info["width"], info["height"])
-                        .get_zones()
-                    )
+                    zones = ZoneStore(self.zone_store_path).load(
+                        self.source_key, info["width"], info["height"]
+                    ).get_zones()
                 except (OSError, ValueError, KeyError, TypeError) as error:
                     self.status_update.emit(f"Не удалось загрузить зоны: {error}")
                     zones = []
@@ -120,10 +116,9 @@ class ProcessingThread(QThread):
             start_time = time.time()
             last_fps_update = start_time
 
-            # === ADDED: Initialize tracking variables BEFORE the loop ===
+            # Initialize tracking variables BEFORE the loop
             best_frame = None
             max_heat = 0.0
-            # ==========================================================
 
             for frame in self.video.read_frames(skip_frames=self.skip_frames):
                 if not self._is_running:
@@ -138,10 +133,9 @@ class ProcessingThread(QThread):
                     continue  # Пропускаем текущий кадр, читаем новый
 
                 frame_count += 1
-
-                # === ADDED: Keep a clean copy of the frame for the final save ===
+                
+                # Keep a clean copy of the frame for the final save
                 current_frame_copy = frame.copy()
-                # ===============================================================
 
                 # Отправляем текущую позицию кадра в GUI
                 current_pos = self.video.get_current_frame_index()
@@ -151,7 +145,9 @@ class ProcessingThread(QThread):
                 current_time = time.time()
                 if current_time - last_fps_update >= 1.0:
                     fps = frame_count / (current_time - start_time)
-                    self.status_update.emit(f"Кадр {current_pos} | {fps:.1f} FPS")
+                    self.status_update.emit(
+                        f"Кадр {current_pos} | {fps:.1f} FPS"
+                    )
                     last_fps_update = current_time
 
                 # Детекция и трекинг
@@ -160,55 +156,59 @@ class ProcessingThread(QThread):
                     objects=self.selected_objects,
                     confidence=self.confidence,
                 )
+                
                 if statistics is not None:
                     statistics_frame = (
-                        current_pos
-                        if info["source_type"] == "file"
+                        current_pos if info["source_type"] == "file"
                         else int((current_time - start_time) * info["fps"])
                     )
                     people_in_frame = statistics.add_frame(statistics_frame, detections)
                     self.people_count_updated.emit(people_in_frame)
+                    
                 heatmap_generator.update(detections)
+                
+                # Enable cooldown so old heat fades away
+                heatmap_generator.apply_decay()
 
-                # === ADDED: Calculate actual heatmap intensity (amount of "red") ===
+                # Calculate actual heatmap intensity (amount of "red")
                 current_heat = np.sum(heatmap_generator.get_heatmap())
                 if current_heat > max_heat:
                     max_heat = current_heat
                     best_frame = current_frame_copy
-                # ==================================================================
 
                 # Отрисовка детекций (если включено)
                 if self.show_detections:
                     for obj in detections:
                         x1, y1, x2, y2 = obj["bbox"]
+                        text = (
+                            f"{obj['label']} ID:{obj['track_id']} "
+                            f"{obj['confidence']:.2f}"
+                        )
                         self.video.draw_rectangle(
-                            frame, x1, y1, x2, y2, color=(0, 255, 0), thickness=2
+                            frame, x1, y1, x2, y2,
+                            color=(0, 255, 0), thickness=2
                         )
 
                 # Формируем итоговый кадр
                 if self.show_heatmap and self.show_detections:
                     display_frame = heatmap_renderer.overlay(
-                        frame,
-                        heatmap_generator.get_heatmap(),
-                        alpha=self.alpha,
-                        colormap=colormap,
+                        frame, heatmap_generator.get_heatmap(),
+                        alpha=self.alpha, colormap=colormap
                     )
                 elif self.show_heatmap:
                     display_frame = heatmap_renderer.overlay(
-                        frame,
-                        heatmap_generator.get_heatmap(),
-                        alpha=1.0,
-                        colormap=colormap,
+                        frame, heatmap_generator.get_heatmap(),
+                        alpha=1.0, colormap=colormap
                     )
                 else:
                     display_frame = frame.copy()
 
                 self.frame_ready.emit(display_frame)
 
-            # === AFTER THE LOOP ENDS === (Fixed indentation so it runs after the loop)
+            # AFTER THE LOOP ENDS
             total_time = time.time() - start_time
             avg_fps = frame_count / total_time if total_time > 0 else 0
-
+            
             self.status_update.emit(
                 f"✓ Обработано {frame_count} кадров за {total_time:.1f}с "
                 f"({avg_fps:.1f} FPS). Сохранение результатов..."
@@ -218,7 +218,9 @@ class ProcessingThread(QThread):
             raw_heatmap_path = "data/output/heatmap_raw.jpg"
             try:
                 heatmap_renderer.save(
-                    heatmap_generator.get_heatmap(), raw_heatmap_path, colormap
+                    heatmap_generator.get_heatmap(), 
+                    raw_heatmap_path, 
+                    colormap
                 )
                 self.status_update.emit(f"✓ Сырая тепловая карта: {raw_heatmap_path}")
             except IOError as e:
@@ -226,7 +228,7 @@ class ProcessingThread(QThread):
 
             # 2. Save the OVERLAY on the "hottest" frame (most red intensity)
             final_frame = best_frame if best_frame is not None else current_frame_copy
-
+            
             output_frame = heatmap_renderer.overlay(
                 final_frame,
                 heatmap_generator.get_heatmap(),
@@ -237,14 +239,16 @@ class ProcessingThread(QThread):
             overlay_path = "data/output/heatmap_overlay.jpg"
             if not cv2.imwrite(overlay_path, output_frame):
                 raise IOError("Не удалось сохранить результат анализа с наложением")
-
+                
             self.status_update.emit(f"✓ Кадр с наложением: {overlay_path}")
+            
             if statistics is not None:
                 try:
                     statistics.save(self.statistics_path)
                     self.statistics_saved.emit(str(self.statistics_path))
                 except OSError as error:
                     self.status_update.emit(f"Не удалось сохранить статистику: {error}")
+                    
             self.result_saved.emit(overlay_path)
             self.finished.emit()
 
@@ -253,7 +257,6 @@ class ProcessingThread(QThread):
             self.status_update.emit(f"✗ Критическая ошибка: {error_msg}")
             print(f"[ERROR] {error_msg}")
             import traceback
-
             traceback.print_exc()
             self.finished.emit()
 
