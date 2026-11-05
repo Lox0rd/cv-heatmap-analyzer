@@ -1,6 +1,7 @@
 
 from unittest.mock import MagicMock
 
+import cv2
 import numpy as np
 import pytest
 from PyQt6.QtWidgets import QFrame
@@ -87,6 +88,36 @@ def test_ai_uses_zones_from_analyzed_source(window, tmp_path):
     zones = window._zones_for_ai(np.zeros((100, 100, 3), dtype=np.uint8))
 
     assert [zone.name for zone in zones] == ["Вход"]
+
+
+def test_ai_restores_result_source_after_restart(window, tmp_path):
+    frame = np.zeros((100, 100, 3), dtype=np.uint8)
+    image_path = tmp_path / "heatmap_overlay.jpg"
+    cv2.imwrite(str(image_path), frame)
+    store = ZoneStore(tmp_path / "zones.json")
+    manager = ZoneManager()
+    manager.add_zone("Вход", [(10, 10), (80, 10), (80, 60)])
+    store.save("file:analyzed.mp4", 100, 100, manager.get_zones())
+    window.zones_widget.store = store
+    window.ai_widget.output_dir = tmp_path
+    window.video_widget.update_frame(frame)
+    window._display_source_key = "file:analyzed.mp4"
+
+    window._on_result_saved(str(image_path))
+    window._analysis_result_source_key = None
+    window.settings_widget.source_input.setText("different.mp4")
+
+    assert [zone.name for zone in window._zones_for_ai(frame)] == ["Вход"]
+
+
+def test_ai_does_not_apply_zones_to_different_frame_size(window, tmp_path):
+    window.ai_widget.output_dir = tmp_path
+    (tmp_path / "heatmap_overlay.source.json").write_text(
+        '{"source_key": "file:analyzed.mp4", "size": [100, 100]}',
+        encoding="utf-8",
+    )
+
+    assert window._zones_for_ai(np.zeros((50, 50, 3), dtype=np.uint8)) == []
 
 
 def test_play_preview_rejects_non_file_source(

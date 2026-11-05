@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 import cv2
@@ -254,12 +255,22 @@ class MainWindow(QMainWindow):
 
     def _zones_for_ai(self, frame):
         source_key = self._analysis_result_source_key
+        height, width = frame.shape[:2]
+        if source_key is None:
+            metadata_path = self.ai_widget.output_dir / "heatmap_overlay.source.json"
+            if metadata_path.is_file():
+                try:
+                    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+                    if metadata.get("size") != [width, height]:
+                        return []
+                    source_key = metadata["source_key"]
+                except (OSError, ValueError, KeyError, TypeError):
+                    return []
         if source_key is None:
             try:
                 _, source_key = self._selected_source()
             except ValueError:
                 return []
-        height, width = frame.shape[:2]
         return self.zones_widget.store.load(source_key, width, height).get_zones()
 
     def _show_frame(self, frame):
@@ -392,6 +403,23 @@ class MainWindow(QMainWindow):
     def _on_result_saved(self, path: str):
         self._analysis_result_path = path
         self._analysis_result_source_key = self._display_source_key
+        if self._analysis_result_source_key and self.video_widget.last_frame is not None:
+            height, width = self.video_widget.last_frame.shape[:2]
+            metadata_path = Path(path).with_name("heatmap_overlay.source.json")
+            temporary = metadata_path.with_suffix(".tmp")
+            try:
+                temporary.write_text(
+                    json.dumps({
+                        "source_key": self._analysis_result_source_key,
+                        "size": [width, height],
+                    }, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+                temporary.replace(metadata_path)
+            except OSError:
+                self.settings_widget.set_status(
+                    "Карта сохранена, но не удалось сохранить её источник."
+                )
         self.map_widget.refresh()
         self.ai_widget.refresh_frame()
 
