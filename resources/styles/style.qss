@@ -60,3 +60,6 @@ QPushButton#secondaryButton:disabled { color: #91A3B1; background: #F5F8FA; bord
 QPushButton#settingsButton { color: #FFFFFF; background: transparent; border: 1px solid #9BC9E7; padding: 7px 16px; }
 QPushButton#settingsButton:hover { background: #1265A1; }
 QDialog#settingsDialog { background: #FFFFFF; }
+QTextEdit#promptInput, QTextEdit#resultOutput { color: #17354D; background: #F8FBFD; border: 1px solid #CBD9E4; border-radius: 4px; padding: 8px; selection-background-color: #0075BE; }
+QTextEdit#promptInput:focus { border: 1px solid #0075BE; background: #FFFFFF; }
+QTextEdit#resultOutput { background: #FFFFFF; }
