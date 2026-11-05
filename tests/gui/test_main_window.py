@@ -1,4 +1,3 @@
-
 from unittest.mock import MagicMock
 
 import cv2
@@ -31,11 +30,18 @@ def test_main_window_initializes(window):
     assert window.preview_thread is None
     assert window.people_count_label.text() == "Людей в кадре: —"
     assert [window.tabs.tabText(index) for index in range(window.tabs.count())] == [
-        "Анализ", "Зоны", "Карта", "Статистика", "AI анализ", "Экспорт"
+        "Анализ",
+        "Зоны",
+        "Карта",
+        "Статистика",
+        "AI анализ",
+        "Экспорт",
     ]
 
 
-def test_refresh_buttons_restart_analysis_of_selected_file(window, monkeypatch, tmp_path):
+def test_refresh_buttons_restart_analysis_of_selected_file(
+    window, monkeypatch, tmp_path
+):
     video = tmp_path / "sample.mp4"
     video.touch()
     window.settings_widget.source_input.setText(str(video))
@@ -174,8 +180,12 @@ def test_analysis_passes_source_and_zone_store_to_statistics(window, monkeypatch
     monkeypatch.setattr("src.gui.main_window.ProcessingThread", factory)
 
     window.start_processing(
-        sources=["sample.mp4"], confidence=0.5, alpha=0.5,
-        skip_frames=0, colormap_name="Jet", show_detections=True,
+        sources=["sample.mp4"],
+        confidence=0.5,
+        alpha=0.5,
+        skip_frames=0,
+        colormap_name="Jet",
+        show_detections=True,
         show_heatmap=True,
     )
 
@@ -193,9 +203,7 @@ def test_play_preview_rejects_non_file_source(
 
     window.play_preview()
 
-    assert "только для видеофайлов" in (
-        window.settings_widget.status_label.text()
-    )
+    assert "только для видеофайлов" in (window.settings_widget.status_label.text())
 
 
 def test_play_preview_rejects_empty_path(window):
@@ -203,9 +211,7 @@ def test_play_preview_rejects_empty_path(window):
 
     window.play_preview()
 
-    assert "выберите видеофайл" in (
-        window.settings_widget.status_label.text().lower()
-    )
+    assert "выберите видеофайл" in (window.settings_widget.status_label.text().lower())
 
 
 def test_play_preview_rejects_running_analysis(window):
@@ -214,9 +220,7 @@ def test_play_preview_rejects_running_analysis(window):
 
     window.play_preview()
 
-    assert "во время анализа" in (
-        window.settings_widget.status_label.text()
-    )
+    assert "во время анализа" in (window.settings_widget.status_label.text())
 
 
 def test_seek_is_forwarded_to_preview(window):
@@ -243,9 +247,7 @@ def test_preview_finished_updates_status(window):
     window._on_preview_finished()
 
     assert window.settings_widget.play_btn.text() == "▶ Play"
-    assert "завершён" in (
-        window.settings_widget.status_label.text()
-    )
+    assert "завершён" in (window.settings_widget.status_label.text())
 
 
 def test_stop_preview_clears_thread(window):

@@ -68,7 +68,9 @@ def test_api_error_is_shown_without_freezing_interface(qtbot, monkeypatch, tmp_p
     assert widget.analyze_btn.isEnabled()
 
 
-def test_ai_receives_frame_with_zone_contour_and_zone_name(qtbot, monkeypatch, tmp_path):
+def test_ai_receives_frame_with_zone_contour_and_zone_name(
+    qtbot, monkeypatch, tmp_path
+):
     image = np.zeros((100, 100, 3), dtype=np.uint8)
     cv2.imwrite(str(tmp_path / "heatmap_overlay.jpg"), image)
     zones = [
