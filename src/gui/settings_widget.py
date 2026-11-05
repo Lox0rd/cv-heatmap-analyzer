@@ -92,6 +92,8 @@ class SettingsWidget(QWidget):
         super().__init__()
 
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(14, 0, 14, 16)
+        layout.setSpacing(9)
 
         # === Источник видео ===
         source_group = QGroupBox("Источник видео")
@@ -125,7 +127,8 @@ class SettingsWidget(QWidget):
             "Путь к видеофайлу"
         )
 
-        self.browse_btn = QPushButton("Обзор...")
+        self.browse_btn = QPushButton("Обзор")
+        self.browse_btn.setObjectName("browseButton")
         self.browse_btn.clicked.connect(self.browse_file)
 
         file_row.addWidget(self.source_input, stretch=1)
@@ -257,7 +260,10 @@ class SettingsWidget(QWidget):
             "bus": "Автобус",
             "truck": "Грузовик",
         }
-        for object_name in DETECTED_OBJECTS:
+        object_order = ("person", "bicycle", "car", "motorcycle", "bus", "truck")
+        for object_name in object_order:
+            if object_name not in DETECTED_OBJECTS:
+                continue
             self.object_combo.add_checkable_item(
                 object_labels.get(object_name, object_name),
                 object_name,
