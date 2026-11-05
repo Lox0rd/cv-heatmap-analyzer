@@ -78,9 +78,13 @@ class ActivityChart(QLabel):
         painter.drawText(right - 35, self.height() - 8, f"{last} с")
 
         series = [("Всего", "total", CHART_COLORS[0])]
+        visible_count = max(1, min(4, (self.width() - left) // 105 - 1))
+        visible_zones = sorted(
+            self.zones, key=lambda zone: zone["observations"], reverse=True
+        )[:visible_count]
         series.extend(
             (zone["name"], zone["name"], CHART_COLORS[(index + 1) % len(CHART_COLORS)])
-            for index, zone in enumerate(self.zones[:4])
+            for index, zone in enumerate(visible_zones)
         )
         for index, (name, key, color) in enumerate(series):
             points = []
@@ -186,6 +190,7 @@ class StatisticsWidget(QWidget):
 
         self.status_label = QLabel("Запустите анализ для построения статистики.")
         self.status_label.setObjectName("zoneHint")
+        self.status_label.setWordWrap(True)
         layout.addWidget(self.status_label)
 
     @staticmethod
@@ -229,9 +234,12 @@ class StatisticsWidget(QWidget):
                 self.zone_table.setItem(row, column, QTableWidgetItem(str(value)))
         self.timeline_chart.set_data(timeline, zones)
         self.zone_chart.set_data(timeline, zones)
-        self.status_label.setText(
-            "Показаны результаты последнего анализа. Наблюдение — объект в одном кадре."
-        )
+        message = "Показаны результаты последнего анализа. Наблюдение — объект в одном кадре."
+        if len(zones) > 4:
+            message += " График времени показывает до 4 самых активных зон."
+        if len(zones) > 8:
+            message += " Столбчатый график показывает 8 самых активных зон; таблица — все зоны."
+        self.status_label.setText(message)
         return True
 
     def _clear(self, message: str):
