@@ -63,3 +63,8 @@ QDialog#settingsDialog { background: #FFFFFF; }
 QTextEdit#promptInput, QTextEdit#resultOutput { color: #17354D; background: #F8FBFD; border: 1px solid #CBD9E4; border-radius: 4px; padding: 8px; selection-background-color: #0075BE; }
 QTextEdit#promptInput:focus { border: 1px solid #0075BE; background: #FFFFFF; }
 QTextEdit#resultOutput { background: #FFFFFF; }
+QFrame#statCard { background: #FFFFFF; border: 1px solid #D8E3ED; border-radius: 8px; }
+QLabel#statCaption { color: #5F7C90; font-size: 11px; }
+QLabel#statValue { color: #075B94; font-size: 25px; font-weight: bold; }
+QTableWidget { color: #18324A; background: #FFFFFF; border: 1px solid #D8E3ED; gridline-color: #E6EEF4; selection-background-color: #D8EEFA; selection-color: #103D63; }
+QHeaderView::section { color: #14527F; background: #F3F8FB; border: none; border-bottom: 1px solid #D8E3ED; padding: 8px; font-weight: bold; }

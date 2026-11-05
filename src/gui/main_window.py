@@ -22,6 +22,7 @@ from src.gui.ai_analysis_widget import AIAnalysisWidget
 from src.gui.map_widget import MapWidget
 from src.gui.processing_thread import ProcessingThread
 from src.gui.settings_widget import SettingsWidget
+from src.gui.statistics_widget import StatisticsWidget
 from src.gui.video_widget import VideoWidget
 from src.gui.zones_widget import ZonesWidget
 
@@ -114,7 +115,8 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.zones_widget, "Зоны")
         self.map_widget = MapWidget()
         self.tabs.addTab(self.map_widget, "Карта")
-        self.tabs.addTab(self._placeholder_page(), "Статистика")
+        self.statistics_widget = StatisticsWidget()
+        self.tabs.addTab(self.statistics_widget, "Статистика")
         self.ai_widget = AIAnalysisWidget(zones_provider=self._zones_for_ai)
         self.tabs.addTab(self.ai_widget, "AI анализ")
         self.tabs.addTab(self._placeholder_page(), "Экспорт")
@@ -209,6 +211,8 @@ class MainWindow(QMainWindow):
     def _on_tab_changed(self, index: int):
         if index == 2:
             self.map_widget.refresh()
+        if index == 3:
+            self.statistics_widget.refresh()
         if index == 4:
             self.ai_widget.refresh_frame()
         if index == 1:
@@ -373,6 +377,8 @@ class MainWindow(QMainWindow):
             show_detections=show_detections,
             show_heatmap=show_heatmap,
             selected_objects=selected_objects,
+            source_key=self._display_source_key,
+            zone_store_path=self.zones_widget.store.path,
         )
 
         self.thread.frame_ready.connect(self._show_frame)
@@ -381,6 +387,7 @@ class MainWindow(QMainWindow):
         self.thread.total_frames_changed.connect(self.settings_widget.set_total_frames)
         self.thread.is_file_source.connect(self.settings_widget.set_seek_enabled)
         self.thread.result_saved.connect(self._on_result_saved)
+        self.thread.statistics_saved.connect(self._on_statistics_saved)
         self.thread.finished.connect(self.on_finished)
 
         self.thread.start()
@@ -422,6 +429,10 @@ class MainWindow(QMainWindow):
                 )
         self.map_widget.refresh()
         self.ai_widget.refresh_frame()
+
+    def _on_statistics_saved(self, path: str):
+        self.statistics_widget.statistics_path = Path(path)
+        self.statistics_widget.refresh()
 
     def on_finished(self):
         self.settings_widget.set_analysis_running(False)
