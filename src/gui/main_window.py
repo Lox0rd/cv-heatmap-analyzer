@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication,
     QFrame,
@@ -7,6 +8,7 @@ from PyQt6.QtWidgets import (
     QLabel,
     QMainWindow,
     QScrollArea,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -87,7 +89,20 @@ class MainWindow(QMainWindow):
         workspace_layout = QHBoxLayout(workspace)
         workspace_layout.setContentsMargins(22, 22, 22, 22)
         workspace_layout.setSpacing(20)
-        root.addWidget(workspace, stretch=1)
+        self.tabs = QTabWidget()
+        self.tabs.setObjectName("mainTabs")
+        root.addWidget(self.tabs, stretch=1)
+        self.tabs.addTab(workspace, "Анализ")
+        for name in ("Зоны", "Карта", "Статистика", "AI анализ", "Экспорт"):
+            page = QWidget()
+            page.setObjectName("placeholderPage")
+            page_layout = QVBoxLayout(page)
+            page_layout.addStretch()
+            label = QLabel("Раздел в разработке")
+            label.setObjectName("placeholderText")
+            page_layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
+            page_layout.addStretch()
+            self.tabs.addTab(page, name)
 
         sidebar = QFrame()
         sidebar.setObjectName("sidebar")
