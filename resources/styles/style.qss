@@ -49,7 +49,7 @@ QTabWidget#mainTabs QTabBar::tab:selected { color: #075B94; border-bottom: 3px s
 QWidget#placeholderPage { background: #EDF3F8; }
 QLabel#placeholderText { color: #6C8799; font-size: 20px; font-weight: bold; }
 QFrame#zoneControls { background: #FFFFFF; border: 1px solid #D8E3ED; border-radius: 8px; }
-QWidget#zoneCanvas { background: #112C43; border: 1px solid #163D5B; border-radius: 6px; }
+QLabel#zoneCanvas { background: #112C43; border: 1px solid #163D5B; border-radius: 6px; }
 QLabel#zoneHint { color: #49697E; background: #EEF6FB; border-left: 3px solid #0075BE; padding: 10px; }
 QListWidget#zoneList { color: #17354D; background: #F8FBFD; border: 1px solid #CBD9E4; border-radius: 4px; padding: 5px; }
 QListWidget#zoneList::item { padding: 7px; }
@@ -57,3 +57,9 @@ QListWidget#zoneList::item:selected { color: #075B94; background: #D8EEFA; }
 QPushButton#secondaryButton { color: #086AA8; background: #FFFFFF; border: 1px solid #9FC6DF; }
 QPushButton#secondaryButton:hover { background: #EAF5FC; }
 QPushButton#secondaryButton:disabled { color: #91A3B1; background: #F5F8FA; border-color: #D9E3EA; }
+QPushButton#settingsButton { color: #FFFFFF; background: transparent; border: 1px solid #9BC9E7; padding: 7px 16px; }
+QPushButton#settingsButton:hover { background: #1265A1; }
+QDialog#settingsDialog { background: #FFFFFF; }
+QTextEdit#promptInput, QTextEdit#resultOutput { color: #17354D; background: #F8FBFD; border: 1px solid #CBD9E4; border-radius: 4px; padding: 8px; selection-background-color: #0075BE; }
+QTextEdit#promptInput:focus { border: 1px solid #0075BE; background: #FFFFFF; }
+QTextEdit#resultOutput { background: #FFFFFF; }

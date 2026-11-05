@@ -80,6 +80,7 @@ def test_processing_thread_processes_frame_and_saves_heatmap(
     statuses = []
     frames = []
     saved_images = []
+    result_paths = []
     monkeypatch.setattr(
         processing_module.VideoProcessor,
         "open_source",
@@ -109,11 +110,14 @@ def test_processing_thread_processes_frame_and_saves_heatmap(
     )
     thread.status_update.connect(statuses.append)
     thread.frame_ready.connect(frames.append)
+    thread.result_saved.connect(result_paths.append)
     thread.run()
 
     assert len(frames) == 1
     assert video.released
-    assert saved_images[0][0] == "data/output/heatmap.jpg"
+    assert saved_images[0][0] == "data/output/heatmap_overlay.jpg"
+    assert renderer.saved[0] == "data/output/heatmap_raw.jpg"
+    assert result_paths == ["data/output/heatmap_overlay.jpg"]
     assert np.count_nonzero(saved_images[0][1][0, :2]) == 0
     assert len(renderer.overlays) == (2 if show_heatmap else 1)
     assert renderer.overlays[-1] == (
@@ -126,12 +130,13 @@ def test_processing_thread_processes_frame_and_saves_heatmap(
             processing_module.cv2.COLORMAP_JET,
         )
     if show_detections:
-        assert [entry[0] for entry in video.drawn] == ["rectangle", "text"]
+        assert [entry[0] for entry in video.drawn] == ["rectangle"]
     assert any("Обработано 1 кадров" in status for status in statuses)
 
 
 def test_processing_thread_reports_open_source_error(monkeypatch):
     statuses = []
+    result_paths = []
     monkeypatch.setattr(
         processing_module.VideoProcessor,
         "open_source",
@@ -139,7 +144,9 @@ def test_processing_thread_reports_open_source_error(monkeypatch):
     )
     thread = ProcessingThread(["bad"], 0.5, 0.5, 0)
     thread.status_update.connect(statuses.append)
+    thread.result_saved.connect(result_paths.append)
 
     thread.run()
 
     assert any("source failed" in status for status in statuses)
+    assert result_paths == []

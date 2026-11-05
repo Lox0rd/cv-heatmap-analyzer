@@ -5,7 +5,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 from PyQt6.QtCore import QPointF, QRectF, Qt, pyqtSignal
-from PyQt6.QtGui import QColor, QImage, QPainter, QPen, QPolygonF
+from PyQt6.QtGui import QColor, QImage, QPainter, QPen, QPixmap, QPolygonF
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -22,7 +22,7 @@ from src.zones.zone_manager import ZoneManager
 from src.zones.zone_store import ZoneStore
 
 
-class ZoneCanvas(QWidget):
+class ZoneCanvas(QLabel):
     point_added = pyqtSignal(int, int)
 
     def __init__(self):
@@ -35,6 +35,7 @@ class ZoneCanvas(QWidget):
         self.zones = []
         self.draft = []
         self.editing = False
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
     def set_frame(self, frame: np.ndarray | None) -> None:
         self.frame = frame.copy() if frame is not None else None
@@ -46,7 +47,7 @@ class ZoneCanvas(QWidget):
             self.image = QImage(
                 rgb.data, width, height, channels * width, QImage.Format.Format_RGB888
             ).copy()
-        self.update()
+        self.render_frame()
 
     def image_rect(self) -> QRectF:
         if self.image is None:
@@ -72,12 +73,17 @@ class ZoneCanvas(QWidget):
                 return
         super().mousePressEvent(event)
 
-    def paintEvent(self, event):
-        painter = QPainter(self)
-        painter.fillRect(self.rect(), QColor("#112C43"))
+    def render_frame(self):
+        if self.width() <= 0 or self.height() <= 0:
+            return
+        pixmap = QPixmap(self.size())
+        pixmap.fill(QColor("#112C43"))
+        painter = QPainter(pixmap)
         if self.image is None:
             painter.setPen(QColor("#A9C2D4"))
             painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, "Загрузите кадр для разметки зон")
+            painter.end()
+            self.setPixmap(pixmap)
             return
 
         rect = self.image_rect()
@@ -107,6 +113,12 @@ class ZoneCanvas(QWidget):
             painter.setBrush(QColor("#FFD166"))
             for point in self.draft:
                 painter.drawEllipse(display_point(point), 4, 4)
+        painter.end()
+        self.setPixmap(pixmap)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        self.render_frame()
 
 
 class ZonesWidget(QWidget):
@@ -217,24 +229,24 @@ class ZonesWidget(QWidget):
         if not self.name_input.text().strip():
             self.name_input.setText(f"Зона {len(self.manager.get_zones()) + 1}")
         self.hint.setText("Щёлкайте по кадру, чтобы добавить вершины многоугольника.")
-        self.canvas.update()
+        self.canvas.render_frame()
         self._update_controls()
 
     def _add_point(self, x: int, y: int) -> None:
         self.canvas.draft.append((x, y))
-        self.canvas.update()
+        self.canvas.render_frame()
         self._update_controls()
 
     def undo_point(self) -> None:
         if self.canvas.draft:
             self.canvas.draft.pop()
-            self.canvas.update()
+            self.canvas.render_frame()
             self._update_controls()
 
     def cancel_zone(self) -> None:
         self.canvas.editing = False
         self.canvas.draft = []
-        self.canvas.update()
+        self.canvas.render_frame()
         self._update_controls()
 
     def save_zone(self) -> None:
@@ -277,7 +289,7 @@ class ZonesWidget(QWidget):
         self.canvas.zones = self.manager.get_zones()
         self.zone_list.clear()
         self.zone_list.addItems([zone.name for zone in self.canvas.zones])
-        self.canvas.update()
+        self.canvas.render_frame()
         self._update_controls()
 
     def _update_controls(self) -> None:

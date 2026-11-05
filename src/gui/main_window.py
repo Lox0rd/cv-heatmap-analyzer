@@ -4,10 +4,12 @@ import cv2
 from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication,
+    QDialog,
     QFrame,
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QPushButton,
     QScrollArea,
     QTabWidget,
     QVBoxLayout,
@@ -15,6 +17,8 @@ from PyQt6.QtWidgets import (
 )
 
 from src.gui.preview_thread import VideoPreviewThread
+from src.gui.ai_analysis_widget import AIAnalysisWidget
+from src.gui.map_widget import MapWidget
 from src.gui.processing_thread import ProcessingThread
 from src.gui.settings_widget import SettingsWidget
 from src.gui.video_widget import VideoWidget
@@ -32,6 +36,7 @@ class MainWindow(QMainWindow):
         self.preview_thread = None
         self._display_source_key = None
         self._zones_loaded_for = None
+        self._analysis_result_path = None
 
         self._load_styles()
         self._init_ui()
@@ -83,6 +88,10 @@ class MainWindow(QMainWindow):
         identity.addWidget(title)
         header_layout.addLayout(identity)
         header_layout.addStretch()
+        self.settings_button = QPushButton("Настройки")
+        self.settings_button.setObjectName("settingsButton")
+        self.settings_button.clicked.connect(self._show_settings)
+        header_layout.addWidget(self.settings_button)
         module = QLabel("ТЕПЛОВАЯ КАРТА  /  АНАЛИЗ ВИДЕО")
         module.setObjectName("headerModule")
         header_layout.addWidget(module)
@@ -101,16 +110,12 @@ class MainWindow(QMainWindow):
         self.zones_widget.frame_requested.connect(self._load_zone_frame)
         self.zones_widget.zones_changed.connect(self._on_zones_changed)
         self.tabs.addTab(self.zones_widget, "Зоны")
-        for name in ("Карта", "Статистика", "AI анализ", "Экспорт"):
-            page = QWidget()
-            page.setObjectName("placeholderPage")
-            page_layout = QVBoxLayout(page)
-            page_layout.addStretch()
-            label = QLabel("Раздел в разработке")
-            label.setObjectName("placeholderText")
-            page_layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
-            page_layout.addStretch()
-            self.tabs.addTab(page, name)
+        self.map_widget = MapWidget()
+        self.tabs.addTab(self.map_widget, "Карта")
+        self.tabs.addTab(self._placeholder_page(), "Статистика")
+        self.ai_widget = AIAnalysisWidget()
+        self.tabs.addTab(self.ai_widget, "AI анализ")
+        self.tabs.addTab(self._placeholder_page(), "Экспорт")
         self.tabs.currentChanged.connect(self._on_tab_changed)
 
         sidebar = QFrame()
@@ -119,12 +124,24 @@ class MainWindow(QMainWindow):
         sidebar_layout = QVBoxLayout(sidebar)
         sidebar_layout.setContentsMargins(0, 0, 0, 0)
         sidebar_layout.setSpacing(0)
-        sidebar_title = QLabel("Параметры анализа")
+        sidebar_title = QLabel("Источник и запуск")
         sidebar_title.setObjectName("sectionTitle")
         sidebar_title.setContentsMargins(18, 18, 18, 12)
         sidebar_layout.addWidget(sidebar_title)
 
-        self.settings_widget = SettingsWidget()
+        self.settings_widget = SettingsWidget(separate_parameters=True)
+        self.settings_dialog = QDialog(self)
+        self.settings_dialog.setWindowTitle("Настройки анализа")
+        self.settings_dialog.setObjectName("settingsDialog")
+        self.settings_dialog.setMinimumWidth(390)
+        dialog_layout = QVBoxLayout(self.settings_dialog)
+        dialog_layout.setContentsMargins(20, 16, 20, 20)
+        dialog_layout.setSpacing(12)
+        dialog_layout.addWidget(self.settings_widget.params_group)
+        dialog_layout.addWidget(self.settings_widget.display_group)
+        close_settings = QPushButton("Готово")
+        close_settings.clicked.connect(self.settings_dialog.close)
+        dialog_layout.addWidget(close_settings)
         settings_scroll = QScrollArea()
         settings_scroll.setObjectName("settingsScroll")
         settings_scroll.setWidgetResizable(True)
@@ -162,6 +179,23 @@ class MainWindow(QMainWindow):
         self.settings_widget.preview_play_requested.connect(self.play_preview)
         self.settings_widget.seek_requested.connect(self._on_seek)
 
+    def _show_settings(self):
+        self.settings_dialog.show()
+        self.settings_dialog.raise_()
+        self.settings_dialog.activateWindow()
+
+    @staticmethod
+    def _placeholder_page():
+        page = QWidget()
+        page.setObjectName("placeholderPage")
+        page_layout = QVBoxLayout(page)
+        page_layout.addStretch()
+        label = QLabel("Раздел в разработке")
+        label.setObjectName("placeholderText")
+        page_layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
+        page_layout.addStretch()
+        return page
+
     # === Предпросмотр видео ===
     def _selected_source(self):
         source = self.settings_widget._get_selected_source()
@@ -171,6 +205,10 @@ class MainWindow(QMainWindow):
         return source, f"{source_type}:{source}"
 
     def _on_tab_changed(self, index: int):
+        if index == 2:
+            self.map_widget.refresh()
+        if index == 4:
+            self.ai_widget.refresh_frame()
         if index == 1:
             try:
                 _, key = self._selected_source()
@@ -291,6 +329,7 @@ class MainWindow(QMainWindow):
         selected_objects: list | None = None,
     ):
         self._stop_preview()
+        self._analysis_result_path = None
         source_type = self.settings_widget.source_type_combo.currentData()
         source = sources[0]
         if source_type == "file":
@@ -319,6 +358,7 @@ class MainWindow(QMainWindow):
         self.thread.frame_position_changed.connect(self.settings_widget.set_current_frame)
         self.thread.total_frames_changed.connect(self.settings_widget.set_total_frames)
         self.thread.is_file_source.connect(self.settings_widget.set_seek_enabled)
+        self.thread.result_saved.connect(self._on_result_saved)
         self.thread.finished.connect(self.on_finished)
 
         self.thread.start()
@@ -338,11 +378,17 @@ class MainWindow(QMainWindow):
             self.settings_widget.set_status("Остановка анализа...")
             self.thread.stop()
 
+    def _on_result_saved(self, path: str):
+        self._analysis_result_path = path
+        self.map_widget.refresh()
+        self.ai_widget.refresh_frame()
+
     def on_finished(self):
         self.settings_widget.set_analysis_running(False)
-        self.settings_widget.set_status(
-            "Обработка завершена. Тепловая карта: data/output/heatmap.jpg"
-        )
+        if self._analysis_result_path is not None:
+            self.settings_widget.set_status(
+                f"Обработка завершена. Тепловая карта: {self._analysis_result_path}"
+            )
         self.settings_widget.start_btn.setEnabled(True)
         self.settings_widget.stop_btn.setEnabled(False)
         self.settings_widget._set_source_controls_enabled(True)
@@ -351,6 +397,13 @@ class MainWindow(QMainWindow):
         )
 
     def closeEvent(self, event):
+        if self.ai_widget.worker is not None and self.ai_widget.worker.isRunning():
+            self.ai_widget.status_label.setText(
+                "Дождитесь завершения запроса к модели перед закрытием окна."
+            )
+            self.tabs.setCurrentIndex(4)
+            event.ignore()
+            return
         self._stop_preview()
         if self.thread and self.thread.isRunning():
             self.stop_processing()

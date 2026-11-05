@@ -31,6 +31,15 @@ def test_main_window_initializes(window):
     ]
 
 
+def test_processing_options_open_in_settings_dialog(window):
+    assert window.settings_widget.params_group.parentWidget() is window.settings_dialog
+    assert window.settings_widget.display_group.parentWidget() is window.settings_dialog
+    assert window.settings_widget.source_group.parentWidget() is window.settings_widget
+    window.settings_button.click()
+    assert window.settings_dialog.isVisible()
+    window.settings_dialog.close()
+
+
 def test_saved_zone_appears_on_analysis_video(window, monkeypatch, tmp_path):
     frame = np.zeros((100, 200, 3), dtype=np.uint8)
     capture = MagicMock()
@@ -137,3 +146,11 @@ def test_on_finished_enables_controls(window):
     assert window.settings_widget.start_btn.isEnabled()
     assert not window.settings_widget.stop_btn.isEnabled()
     assert window.settings_widget.play_btn.isEnabled()
+
+
+def test_failed_analysis_keeps_error_status(window):
+    window.settings_widget.set_status("✗ Критическая ошибка: source failed")
+
+    window.on_finished()
+
+    assert "source failed" in window.settings_widget.status_label.text()

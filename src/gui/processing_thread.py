@@ -34,6 +34,7 @@ class ProcessingThread(QThread):
     frame_position_changed = pyqtSignal(int)
     total_frames_changed = pyqtSignal(int)
     is_file_source = pyqtSignal(bool)
+    result_saved = pyqtSignal(str)
     finished = pyqtSignal()
 
     def __init__(
@@ -210,6 +211,7 @@ class ProcessingThread(QThread):
                 raise IOError("Не удалось сохранить результат анализа с наложением")
                 
             self.status_update.emit(f"✓ Кадр с наложением: {overlay_path}")
+            self.result_saved.emit(overlay_path)
             self.finished.emit()
 
         except Exception as e:
