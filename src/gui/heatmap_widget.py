@@ -16,6 +16,11 @@ class HeatmapWidget(QLabel):
 
         self.last_heatmap = None
 
+    def set_placeholder(self, text: str):
+        self.last_heatmap = None
+        self.clear()
+        self.setText(text)
+
     def update_heatmap(self, heatmap_img: np.ndarray):
         self.last_heatmap = heatmap_img
         self._display_heatmap(heatmap_img)

@@ -17,6 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.gui.preview_thread import VideoPreviewThread
+from src.gui.map_widget import MapWidget
 from src.gui.processing_thread import ProcessingThread
 from src.gui.settings_widget import SettingsWidget
 from src.gui.video_widget import VideoWidget
@@ -107,7 +108,9 @@ class MainWindow(QMainWindow):
         self.zones_widget.frame_requested.connect(self._load_zone_frame)
         self.zones_widget.zones_changed.connect(self._on_zones_changed)
         self.tabs.addTab(self.zones_widget, "Зоны")
-        for name in ("Карта", "Статистика", "AI анализ", "Экспорт"):
+        self.map_widget = MapWidget()
+        self.tabs.addTab(self.map_widget, "Карта")
+        for name in ("Статистика", "AI анализ", "Экспорт"):
             page = QWidget()
             page.setObjectName("placeholderPage")
             page_layout = QVBoxLayout(page)
@@ -194,6 +197,8 @@ class MainWindow(QMainWindow):
         return source, f"{source_type}:{source}"
 
     def _on_tab_changed(self, index: int):
+        if index == 2:
+            self.map_widget.refresh()
         if index == 1:
             try:
                 _, key = self._selected_source()
@@ -364,8 +369,9 @@ class MainWindow(QMainWindow):
     def on_finished(self):
         self.settings_widget.set_analysis_running(False)
         self.settings_widget.set_status(
-            "Обработка завершена. Тепловая карта: data/output/heatmap.jpg"
+            "Обработка завершена. Тепловая карта: data/output/heatmap_overlay.jpg"
         )
+        self.map_widget.refresh()
         self.settings_widget.start_btn.setEnabled(True)
         self.settings_widget.stop_btn.setEnabled(False)
         self.settings_widget._set_source_controls_enabled(True)
