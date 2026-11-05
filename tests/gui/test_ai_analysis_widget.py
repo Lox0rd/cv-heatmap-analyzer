@@ -71,7 +71,10 @@ def test_api_error_is_shown_without_freezing_interface(qtbot, monkeypatch, tmp_p
 def test_ai_receives_frame_with_zone_contour_and_zone_name(qtbot, monkeypatch, tmp_path):
     image = np.zeros((100, 100, 3), dtype=np.uint8)
     cv2.imwrite(str(tmp_path / "heatmap_overlay.jpg"), image)
-    zone = Zone("Вход", ((20, 20), (80, 20), (80, 80), (20, 80)))
+    zones = [
+        Zone("Вход", ((10, 10), (45, 10), (45, 45), (10, 45))),
+        Zone("Касса", ((55, 55), (90, 55), (90, 90), (55, 90))),
+    ]
     received = []
 
     class FakeVisionAPI:
@@ -82,7 +85,7 @@ def test_ai_receives_frame_with_zone_contour_and_zone_name(qtbot, monkeypatch, t
     monkeypatch.setattr("src.gui.ai_analysis_widget.VisionAPI", FakeVisionAPI)
     widget = AIAnalysisWidget(
         tmp_path,
-        zones_provider=lambda frame: [zone],
+        zones_provider=lambda frame: zones,
         prompt_provider=lambda: "Что происходит в зоне?",
     )
     qtbot.addWidget(widget)
@@ -91,7 +94,7 @@ def test_ai_receives_frame_with_zone_contour_and_zone_name(qtbot, monkeypatch, t
     qtbot.waitUntil(lambda: not widget.worker.isRunning())
 
     sent_frame, sent_prompt = received[0]
-    assert np.any(sent_frame[20, 50] != 0)
-    assert "1 — Вход" in sent_prompt
+    assert np.any(sent_frame[10, 30] != 0)
+    assert "1 — Вход; 2 — Касса" in sent_prompt
     assert "Что происходит в зоне?" in sent_prompt
     assert np.array_equal(sent_frame, widget.image_display.last_heatmap)

@@ -185,3 +185,27 @@ def test_processing_thread_saves_zone_statistics(monkeypatch, tmp_path):
         "name": "Вход", "observations": 1, "unique_objects": 1
     }
     assert result["timeline"][0]["zones"] == {"Вход": 1}
+
+
+def test_stream_statistics_use_elapsed_time(monkeypatch, tmp_path):
+    frame = np.zeros((12, 16, 3), dtype=np.uint8)
+    video = FakeVideo(frame, source_type="rtsp")
+    video.read_frames = lambda skip_frames: iter([frame.copy(), frame.copy()])
+    monkeypatch.setattr(processing_module.VideoProcessor, "open_source", lambda _: video)
+    monkeypatch.setattr(processing_module, "YOLODetector", lambda: object())
+    monkeypatch.setattr(processing_module, "ObjectTracker", FakeTracker)
+    monkeypatch.setattr(processing_module, "HeatmapRenderer", FakeRenderer)
+    monkeypatch.setattr(processing_module.cv2, "imwrite", lambda *_: True)
+    clock = iter([10.0, 10.0, 12.0, 13.0])
+    monkeypatch.setattr(processing_module.time, "time", lambda: next(clock))
+    statistics_path = tmp_path / "zone_statistics.json"
+    thread = ProcessingThread(
+        ["rtsp://camera"], 0.5, 0.6, 0, selected_objects=["person"],
+        source_key="rtsp:rtsp://camera", statistics_path=statistics_path,
+        zone_store_path=tmp_path / "missing-zones.json",
+    )
+
+    thread.run()
+
+    timeline = json.loads(statistics_path.read_text(encoding="utf-8"))["timeline"]
+    assert [row["second"] for row in timeline] == [0, 2]

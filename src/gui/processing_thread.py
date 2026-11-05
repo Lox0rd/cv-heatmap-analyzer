@@ -158,7 +158,11 @@ class ProcessingThread(QThread):
                     confidence=self.confidence,
                 )
                 if statistics is not None:
-                    statistics.add_frame(current_pos, detections)
+                    statistics_frame = (
+                        current_pos if info["source_type"] == "file"
+                        else int((current_time - start_time) * info["fps"])
+                    )
+                    statistics.add_frame(statistics_frame, detections)
                 heatmap_generator.update(detections)
 
                 # === ADDED: Calculate actual heatmap intensity (amount of "red") ===
