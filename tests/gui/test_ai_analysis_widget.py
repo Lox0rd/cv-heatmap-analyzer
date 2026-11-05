@@ -16,10 +16,10 @@ def test_sends_overlay_frame_and_prompt_to_vision_api(qtbot, monkeypatch, tmp_pa
             return "На кадре видна зона активности."
 
     monkeypatch.setattr("src.gui.ai_analysis_widget.VisionAPI", FakeVisionAPI)
-    widget = AIAnalysisWidget(tmp_path)
+    widget = AIAnalysisWidget(tmp_path, prompt_provider=lambda: "Опиши тепловую карту")
     qtbot.addWidget(widget)
     assert widget.refresh_frame()
-    widget.prompt_input.setPlainText("Опиши тепловую карту")
+    assert not hasattr(widget, "prompt_input")
     widget.start_analysis()
     qtbot.waitUntil(lambda: widget.status_label.text() == "Анализ завершён.")
     qtbot.waitUntil(lambda: not widget.worker.isRunning())
@@ -31,7 +31,8 @@ def test_sends_overlay_frame_and_prompt_to_vision_api(qtbot, monkeypatch, tmp_pa
 
 
 def test_ai_analysis_requires_heatmap_and_prompt(qtbot, tmp_path):
-    widget = AIAnalysisWidget(tmp_path)
+    prompt = ["Начальный запрос"]
+    widget = AIAnalysisWidget(tmp_path, prompt_provider=lambda: prompt[0])
     qtbot.addWidget(widget)
     assert not widget.refresh_frame()
     assert not widget.analyze_btn.isEnabled()
@@ -41,7 +42,7 @@ def test_ai_analysis_requires_heatmap_and_prompt(qtbot, tmp_path):
     image = np.zeros((10, 10, 3), dtype=np.uint8)
     cv2.imwrite(str(tmp_path / "heatmap_overlay.jpg"), image)
     assert widget.refresh_frame()
-    widget.prompt_input.clear()
+    prompt[0] = ""
     widget.start_analysis()
     assert "Введите промпт" in widget.status_label.text()
 
@@ -79,10 +80,13 @@ def test_ai_receives_frame_with_zone_contour_and_zone_name(qtbot, monkeypatch, t
             return "Готово"
 
     monkeypatch.setattr("src.gui.ai_analysis_widget.VisionAPI", FakeVisionAPI)
-    widget = AIAnalysisWidget(tmp_path, zones_provider=lambda frame: [zone])
+    widget = AIAnalysisWidget(
+        tmp_path,
+        zones_provider=lambda frame: [zone],
+        prompt_provider=lambda: "Что происходит в зоне?",
+    )
     qtbot.addWidget(widget)
     assert widget.refresh_frame()
-    widget.prompt_input.setPlainText("Что происходит в зоне?")
     widget.start_analysis()
     qtbot.waitUntil(lambda: not widget.worker.isRunning())
 

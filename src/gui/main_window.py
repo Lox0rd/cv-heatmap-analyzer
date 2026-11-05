@@ -117,7 +117,10 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.map_widget, "Карта")
         self.statistics_widget = StatisticsWidget()
         self.tabs.addTab(self.statistics_widget, "Статистика")
-        self.ai_widget = AIAnalysisWidget(zones_provider=self._zones_for_ai)
+        self.ai_widget = AIAnalysisWidget(
+            zones_provider=self._zones_for_ai,
+            prompt_provider=lambda: self.settings_widget.ai_prompt_input.toPlainText(),
+        )
         self.tabs.addTab(self.ai_widget, "AI анализ")
         self.tabs.addTab(self._placeholder_page(), "Экспорт")
         self.tabs.currentChanged.connect(self._on_tab_changed)
@@ -143,6 +146,7 @@ class MainWindow(QMainWindow):
         dialog_layout.setSpacing(12)
         dialog_layout.addWidget(self.settings_widget.params_group)
         dialog_layout.addWidget(self.settings_widget.display_group)
+        dialog_layout.addWidget(self.settings_widget.ai_group)
         close_settings = QPushButton("Готово")
         close_settings.clicked.connect(self.settings_dialog.close)
         dialog_layout.addWidget(close_settings)

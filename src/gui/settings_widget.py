@@ -13,11 +13,13 @@ from PyQt6.QtWidgets import (
     QPushButton,
     QSlider,
     QSpinBox,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from src.config.settings import (
+    AI_ANALYSIS_PROMPT,
     DEFAULT_CAMERA_INDEX,
     DEFAULT_SKIP_FRAMES,
     DEFAULT_VIDEO_SOURCE,
@@ -294,6 +296,18 @@ class SettingsWidget(QWidget):
         self.display_group.setLayout(display_layout)
         if not separate_parameters:
             layout.addWidget(self.display_group)
+
+        self.ai_group = QGroupBox("AI анализ")
+        ai_layout = QVBoxLayout()
+        ai_layout.addWidget(QLabel("Промпт для анализа кадра:"))
+        self.ai_prompt_input = QTextEdit()
+        self.ai_prompt_input.setObjectName("promptInput")
+        self.ai_prompt_input.setMinimumHeight(110)
+        self.ai_prompt_input.setPlainText(AI_ANALYSIS_PROMPT)
+        ai_layout.addWidget(self.ai_prompt_input)
+        self.ai_group.setLayout(ai_layout)
+        if not separate_parameters:
+            layout.addWidget(self.ai_group)
 
         # === Кнопки управления анализом ===
         control_layout = QHBoxLayout()

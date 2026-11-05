@@ -37,9 +37,12 @@ def test_main_window_initializes(window):
 def test_processing_options_open_in_settings_dialog(window):
     assert window.settings_widget.params_group.parentWidget() is window.settings_dialog
     assert window.settings_widget.display_group.parentWidget() is window.settings_dialog
+    assert window.settings_widget.ai_group.parentWidget() is window.settings_dialog
     assert window.settings_widget.source_group.parentWidget() is window.settings_widget
     window.settings_button.click()
     assert window.settings_dialog.isVisible()
+    window.settings_widget.ai_prompt_input.setPlainText("Проверь отмеченные зоны")
+    assert window.ai_widget.prompt_provider() == "Проверь отмеченные зоны"
     window.settings_dialog.close()
 
 
