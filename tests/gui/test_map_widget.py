@@ -16,6 +16,10 @@ def test_map_displays_saved_heatmap_and_overlay(qtbot, tmp_path):
     assert widget.overlay_display.last_heatmap.shape == (24, 32, 3)
     assert "последнего анализа" in widget.status_label.text()
 
+    widget.raw_display.set_placeholder("Ожидание")
+    widget.refresh_btn.click()
+    assert widget.raw_display.last_heatmap is not None
+
 
 def test_map_reports_missing_results(qtbot, tmp_path):
     widget = MapWidget(tmp_path)

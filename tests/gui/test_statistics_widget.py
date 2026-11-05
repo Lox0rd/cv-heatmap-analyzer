@@ -28,6 +28,10 @@ def test_statistics_displays_table_and_charts(qtbot, tmp_path):
     assert not widget.timeline_chart.pixmap().isNull()
     assert not widget.zone_chart.pixmap().isNull()
 
+    widget.unique_value.setText("0")
+    widget.refresh_btn.click()
+    assert widget.unique_value.text() == "1"
+
 
 def test_statistics_reports_missing_file(qtbot, tmp_path):
     widget = StatisticsWidget(tmp_path / "missing.json")

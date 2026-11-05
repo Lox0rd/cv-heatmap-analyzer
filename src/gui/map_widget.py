@@ -9,7 +9,7 @@ from src.gui.heatmap_widget import HeatmapWidget
 
 
 class MapWidget(QWidget):
-    def __init__(self, output_dir: Path | None = None):
+    def __init__(self, output_dir: Path | None = None, refresh_action=None):
         super().__init__()
         self.output_dir = Path(output_dir or Path("data/output"))
 
@@ -23,7 +23,7 @@ class MapWidget(QWidget):
         heading.addWidget(title)
         heading.addStretch()
         self.refresh_btn = QPushButton("Обновить карту")
-        self.refresh_btn.clicked.connect(self.refresh)
+        self.refresh_btn.clicked.connect(refresh_action or self.refresh)
         heading.addWidget(self.refresh_btn)
         layout.addLayout(heading)
 

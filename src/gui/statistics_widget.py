@@ -129,7 +129,7 @@ class ActivityChart(QLabel):
 
 
 class StatisticsWidget(QWidget):
-    def __init__(self, statistics_path: Path | None = None):
+    def __init__(self, statistics_path: Path | None = None, refresh_action=None):
         super().__init__()
         self.statistics_path = Path(statistics_path or "data/output/zone_statistics.json")
         self.data = None
@@ -143,7 +143,7 @@ class StatisticsWidget(QWidget):
         heading.addWidget(title)
         heading.addStretch()
         self.refresh_btn = QPushButton("Обновить данные")
-        self.refresh_btn.clicked.connect(self.refresh)
+        self.refresh_btn.clicked.connect(refresh_action or self.refresh)
         heading.addWidget(self.refresh_btn)
         layout.addLayout(heading)
 
