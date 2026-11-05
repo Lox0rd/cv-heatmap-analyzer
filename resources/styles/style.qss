@@ -1,246 +1,43 @@
-/* ========================================
-   Общий стиль приложения
-   ======================================== */
-
-QWidget {
-    color: #ffffff;
-    font-family: "Arial";
-    font-size: 13px;
-}
-
-QMainWindow,
-QWidget#centralWidget {
-    background-color: #1C2838;
-}
-
-QLabel {
-    color: #ffffff;
-    background-color: transparent;
-}
-
-/* ========================================
-   Группы настроек
-   ======================================== */
-
-QGroupBox {
-    color: #ffffff;
-    background-color: #243044;
-    border: 1px solid #3B404A;
-    border-radius: 6px;
-    margin-top: 12px;
-    padding: 12px 8px 8px 8px;
-    font-weight: bold;
-}
-
-QGroupBox::title {
-    color: #ffffff;
-    subcontrol-origin: margin;
-    subcontrol-position: top left;
-    left: 10px;
-    padding: 0 5px;
-}
-
-/* ========================================
-   Поля ввода
-   ======================================== */
-
-QLineEdit,
-QSpinBox,
-QDoubleSpinBox,
-QComboBox {
-    color: #ffffff;
-    background-color: #1C2838;
-    border: 1px solid #505560;
-    border-radius: 4px;
-    padding: 5px;
-    min-height: 18px;
-    selection-background-color: #5B8DEF;
-}
-
-QLineEdit:focus,
-QSpinBox:focus,
-QDoubleSpinBox:focus,
-QComboBox:focus {
-    border: 1px solid #1C2838;
-}
-
-QLineEdit:disabled,
-QSpinBox:disabled,
-QDoubleSpinBox:disabled,
-QComboBox:disabled {
-    color: #858B96;
-    background-color: #252830;
-}
-
-/* Выпадающий список */
-
-QComboBox::drop-down {
-    border: none;
-    width: 22px;
-}
-
-QComboBox::down-arrow {
-    image: none;
-    width: 0;
-    height: 0;
-    border-left: 5px solid transparent;
-    border-right: 5px solid transparent;
-    border-top: 5px solid #ffffff;
-    margin-right: 6px;
-}
-
-QComboBox QAbstractItemView {
-    color: #ffffff;
-    background-color: #2D3038;
-    border: 1px solid #505560;
-    selection-background-color: #3B527A;
-    selection-color: #ffffff;
-    outline: none;
-}
-
-/* ========================================
-   Кнопки
-   ======================================== */
-
-QPushButton {
-    color: #ffffff;
-    background-color: #5B8DEF;
-    border: none;
-    border-radius: 4px;
-    padding: 8px 16px;
-    font-weight: bold;
-}
-
-QPushButton:hover {
-    background-color: #4A7BD8;
-}
-
-QPushButton:pressed {
-    background-color: #3A6BC8;
-}
-
-QPushButton:disabled {
-    color: #858B96;
-    background-color: #383C45;
-}
-
-/* Кнопка остановки */
-
-QPushButton#stopButton {
-    color: #20232A;
-    background-color: #E5E7EB;
-}
-
-QPushButton#stopButton:hover {
-    background-color: #D1D5DB;
-}
-
-QPushButton#stopButton:pressed {
-    background-color: #BFC4CC;
-}
-
-/* ========================================
-   Чекбоксы
-   ======================================== */
-
-QCheckBox {
-    color: #ffffff;
-    spacing: 10px;
-    padding: 3px;
-}
-
-QCheckBox::indicator {
-    width: 20px;
-    height: 20px;
-    border: 2px solid #888888;
-    border-radius: 4px;
-    background-color: #383C45;
-}
-
-QCheckBox::indicator:unchecked {
-    border-color: #888888;
-    background-color: #383C45;
-}
-
-QCheckBox::indicator:checked {
-    border-color: #4E6F8E;
-    background-color: #4E6F8E;
-
-}
-
-QCheckBox::indicator:hover {
-    border-color: #5B8DEF;
-}
-
-QCheckBox:disabled {
-    color: #858B96;
-}
-
-/* ========================================
-   Ползунок перемотки видео
-   ======================================== */
-
-QSlider::groove:horizontal {
-    height: 8px;
-    background-color: #454A54;
-    border-radius: 4px;
-}
-
-QSlider::sub-page:horizontal {
-    background-color: #3498DB;
-    border-radius: 4px;
-}
-
-QSlider::add-page:horizontal {
-    background-color: #454A54;
-    border-radius: 4px;
-}
-
-QSlider::handle:horizontal {
-    width: 18px;
-    height: 18px;
-    margin: -6px 0;
-    background-color: #3498DB;
-    border: 2px solid #20232A;
-    border-radius: 9px;
-}
-
-QSlider::handle:horizontal:hover {
-    background-color: #5B8DEF;
-}
-
-QSlider::handle:horizontal:disabled {
-    background-color: #656B76;
-}
-
-QSlider:disabled {
-    background-color: transparent;
-}
-
-/* ========================================
-   Строка состояния
-   ======================================== */
-
-QLabel#statusLabel {
-    color: #BDC3C7;
-    font-style: italic;
-    margin-top: 10px;
-}
-
-/* ========================================
-   Области отображения видео и тепловой карты
-   ======================================== */
-
-QLabel#videoDisplay {
-    color: #BDC3C7;
-    background-color: #0E1824;
-    border-radius: 5px;
-    font-size: 24px;
-    font-weight: bold;
-}
-
-QLabel#heatmapDisplay {
-    color: #ffffff;
-    background-color: #1E1E1E;
-    border-radius: 5px;
-}
+/* Control room palette: blue, white and cool neutrals. */
+QWidget { color: #18324A; font-family: Arial; font-size: 13px; }
+QMainWindow, QWidget#centralWidget, QWidget#workspace { background: #EDF3F8; }
+QFrame#appHeader { background: #064F91; border-bottom: 4px solid #0075BE; }
+QFrame#appHeader QLabel { background: transparent; }
+QLabel#headerEyebrow { color: #A8D6F4; font-size: 10px; font-weight: bold; }
+QLabel#headerTitle { color: #FFFFFF; font-size: 21px; font-weight: bold; }
+QLabel#headerModule { color: #E0F0FA; font-size: 11px; font-weight: bold; }
+QFrame#sidebar, QFrame#viewerPanel { background: #FFFFFF; border: 1px solid #D8E3ED; border-radius: 8px; }
+QLabel#sectionTitle { color: #103D63; background: transparent; font-size: 17px; font-weight: bold; }
+QLabel#viewerBadge { color: #0870B5; background: #E8F4FB; border: 1px solid #CBE6F6; border-radius: 11px; padding: 5px 10px; font-size: 10px; font-weight: bold; }
+QScrollArea#settingsScroll { background: #FFFFFF; border: none; }
+QScrollArea#settingsScroll > QWidget > QWidget { background: #FFFFFF; }
+QScrollBar:vertical { background: #F3F7FA; width: 8px; margin: 2px; }
+QScrollBar::handle:vertical { background: #BDD0DE; min-height: 28px; border-radius: 4px; }
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0; }
+QGroupBox { color: #14527F; background: #FFFFFF; border: 1px solid #DDE7EF; border-radius: 6px; margin-top: 12px; padding: 14px 10px 10px 10px; font-weight: bold; }
+QGroupBox::title { subcontrol-origin: margin; subcontrol-position: top left; left: 10px; padding: 0 5px; background: #FFFFFF; }
+QLabel { background: transparent; }
+QLineEdit, QSpinBox, QDoubleSpinBox, QComboBox { color: #17354D; background: #F8FBFD; border: 1px solid #CBD9E4; border-radius: 4px; padding: 6px 8px; min-height: 22px; selection-background-color: #0075BE; }
+QLineEdit:hover, QSpinBox:hover, QDoubleSpinBox:hover, QComboBox:hover { border-color: #84B8D9; }
+QLineEdit:focus, QSpinBox:focus, QDoubleSpinBox:focus, QComboBox:focus { border: 1px solid #0075BE; background: #FFFFFF; }
+QLineEdit:disabled, QSpinBox:disabled, QDoubleSpinBox:disabled, QComboBox:disabled { color: #8A9BA8; background: #EDF2F5; }
+QComboBox::drop-down { border: none; width: 22px; }
+QComboBox QAbstractItemView { color: #17354D; background: #FFFFFF; border: 1px solid #CBD9E4; selection-background-color: #D8EEFA; selection-color: #103D63; outline: none; }
+QPushButton { color: #FFFFFF; background: #0075BE; border: 1px solid #0075BE; border-radius: 4px; padding: 8px 13px; min-height: 20px; font-weight: bold; }
+QPushButton:hover { background: #0066A6; border-color: #0066A6; }
+QPushButton:pressed { background: #05568B; }
+QPushButton:disabled { color: #91A3B1; background: #E8EFF4; border-color: #D9E3EA; }
+QPushButton#browseButton, QPushButton#stopButton { color: #086AA8; background: #FFFFFF; border: 1px solid #9FC6DF; }
+QPushButton#browseButton:hover, QPushButton#stopButton:hover { background: #EAF5FC; }
+QPushButton#stopButton:disabled { color: #91A3B1; background: #F5F8FA; border-color: #D9E3EA; }
+QCheckBox { spacing: 8px; padding: 4px 0; }
+QCheckBox::indicator { width: 17px; height: 17px; border: 1px solid #A8BECE; border-radius: 3px; background: #FFFFFF; }
+QCheckBox::indicator:checked { image: url(resources/styles/selected.svg); background: #0075BE; border-color: #0075BE; }
+QCheckBox:disabled { color: #9AABB6; }
+QSlider::groove:horizontal { height: 6px; background: #DCE8F0; border-radius: 3px; }
+QSlider::sub-page:horizontal { background: #0075BE; border-radius: 3px; }
+QSlider::handle:horizontal { width: 16px; height: 16px; margin: -6px 0; background: #FFFFFF; border: 2px solid #0075BE; border-radius: 9px; }
+QSlider::handle:horizontal:disabled { border-color: #B5C6D2; }
+QLabel#statusLabel { color: #49697E; background: #EEF6FB; border-left: 3px solid #0075BE; border-radius: 2px; padding: 10px; }
+QLabel#videoDisplay { color: #A9C2D4; background: #112C43; border: 1px solid #163D5B; border-radius: 6px; font-size: 18px; font-weight: bold; }
+QLabel#heatmapDisplay { color: #A9C2D4; background: #112C43; border-radius: 6px; }

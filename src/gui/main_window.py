@@ -1,12 +1,12 @@
 from pathlib import Path
 
-from PyQt6.QtCore import Qt
-from PyQt6.QtGui import QPixmap
 from PyQt6.QtWidgets import (
     QApplication,
+    QFrame,
     QHBoxLayout,
     QLabel,
     QMainWindow,
+    QScrollArea,
     QVBoxLayout,
     QWidget,
 )
@@ -21,7 +21,8 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("CV Heatmap Analyzer")
-        self.resize(1200, 700)
+        self.resize(1360, 820)
+        self.setMinimumSize(940, 620)
 
         self.thread = None
         self.preview_thread = None
@@ -41,9 +42,12 @@ class MainWindow(QMainWindow):
         app = QApplication.instance()
 
         if app is not None and style_path.is_file():
-            app.setStyleSheet(
-                style_path.read_text(encoding="utf-8")
+            style = style_path.read_text(encoding="utf-8")
+            style = style.replace(
+                "resources/styles/selected.svg",
+                (style_path.parent / "selected.svg").as_posix(),
             )
+            app.setStyleSheet(style)
         else:
             print(
                 f"[WARNING] Файл стилей не найден: {style_path}"
@@ -54,28 +58,78 @@ class MainWindow(QMainWindow):
         central_widget.setObjectName("centralWidget")
         self.setCentralWidget(central_widget)
 
-        main_layout = QHBoxLayout(central_widget)
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        main_layout.setSpacing(10)
+        root = QVBoxLayout(central_widget)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
 
-        left_layout = QVBoxLayout()
-        left_layout.setSpacing(5)
+        header = QFrame()
+        header.setObjectName("appHeader")
+        header_layout = QHBoxLayout(header)
+        header_layout.setContentsMargins(28, 15, 28, 15)
 
-        self.video_widget = VideoWidget()
-        left_layout.addWidget(self.video_widget, stretch=1)
+        identity = QVBoxLayout()
+        identity.setSpacing(2)
+        eyebrow = QLabel("СИСТЕМА ВИДЕОАНАЛИТИКИ")
+        eyebrow.setObjectName("headerEyebrow")
+        title = QLabel("Мониторинг активности")
+        title.setObjectName("headerTitle")
+        identity.addWidget(eyebrow)
+        identity.addWidget(title)
+        header_layout.addLayout(identity)
+        header_layout.addStretch()
+        module = QLabel("ТЕПЛОВАЯ КАРТА  /  АНАЛИЗ ВИДЕО")
+        module.setObjectName("headerModule")
+        header_layout.addWidget(module)
+        root.addWidget(header)
+
+        workspace = QWidget()
+        workspace.setObjectName("workspace")
+        workspace_layout = QHBoxLayout(workspace)
+        workspace_layout.setContentsMargins(22, 22, 22, 22)
+        workspace_layout.setSpacing(20)
+        root.addWidget(workspace, stretch=1)
+
+        sidebar = QFrame()
+        sidebar.setObjectName("sidebar")
+        sidebar.setFixedWidth(320)
+        sidebar_layout = QVBoxLayout(sidebar)
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+        sidebar_layout.setSpacing(0)
+        sidebar_title = QLabel("Параметры анализа")
+        sidebar_title.setObjectName("sectionTitle")
+        sidebar_title.setContentsMargins(18, 18, 18, 12)
+        sidebar_layout.addWidget(sidebar_title)
 
         self.settings_widget = SettingsWidget()
-        left_layout.addWidget(self.settings_widget.seek_group, stretch=0)
-        
-        main_layout.addWidget(self.settings_widget, stretch=1)
-        main_layout.addLayout(left_layout, stretch=3)
+        settings_scroll = QScrollArea()
+        settings_scroll.setObjectName("settingsScroll")
+        settings_scroll.setWidgetResizable(True)
+        settings_scroll.setFrameShape(QFrame.Shape.NoFrame)
+        settings_scroll.setWidget(self.settings_widget)
+        sidebar_layout.addWidget(settings_scroll, stretch=1)
+        workspace_layout.addWidget(sidebar)
 
-        # Иконка
-        self.corner_icon_label = QLabel(central_widget)
-        self.corner_icon_label.setObjectName("cornerIcon")
+        viewer = QFrame()
+        viewer.setObjectName("viewerPanel")
+        viewer_layout = QVBoxLayout(viewer)
+        viewer_layout.setContentsMargins(20, 18, 20, 20)
+        viewer_layout.setSpacing(14)
 
-        self.corner_icon_label.resize(64, 64) 
-        self.corner_icon_label.raise_()      
+        viewer_heading = QHBoxLayout()
+        viewer_title = QLabel("Видеопоток")
+        viewer_title.setObjectName("sectionTitle")
+        viewer_heading.addWidget(viewer_title)
+        viewer_heading.addStretch()
+        viewer_badge = QLabel("●  ОБЛАСТЬ ПРОСМОТРА")
+        viewer_badge.setObjectName("viewerBadge")
+        viewer_heading.addWidget(viewer_badge)
+        viewer_layout.addLayout(viewer_heading)
+
+        self.video_widget = VideoWidget()
+        self.video_widget.setMinimumSize(320, 240)
+        viewer_layout.addWidget(self.video_widget, stretch=1)
+        viewer_layout.addWidget(self.settings_widget.seek_group)
+        workspace_layout.addWidget(viewer, stretch=1)
 
 
         # Сигналы анализа.
@@ -83,32 +137,6 @@ class MainWindow(QMainWindow):
         self.settings_widget.stop_requested.connect(self.stop_processing)
         self.settings_widget.preview_play_requested.connect(self.play_preview)
         self.settings_widget.seek_requested.connect(self._on_seek)
-
-        self._load_corner_icon()
-
-    def _load_corner_icon(self):
-        """Загрузка иконки"""
-        icon_path = (
-            Path(__file__).resolve().parents[2]
-            / "resources"
-            / "icon.png" 
-        )
-        
-        if icon_path.is_file():
-            pixmap = QPixmap(str(icon_path))
-            if not pixmap.isNull():
-                scaled_pixmap = pixmap.scaled(
-                    64, 64,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation
-                )
-                self.corner_icon_label.setPixmap(scaled_pixmap)
-                self.corner_icon_label.setStyleSheet("") 
-            else:
-                print("[ERROR] Image file is empty or corrupt.")
-        else:
-            print(f"[ERROR] Path is wrong or case-sensitive mismatch: {icon_path}")
-
 
     # === Предпросмотр видео ===
     def play_preview(self):
@@ -225,19 +253,6 @@ class MainWindow(QMainWindow):
         self.settings_widget.play_btn.setEnabled(
             self.settings_widget.source_type_combo.currentData() == "file"
         )
-
-    def resizeEvent(self, event):
-        """Keeps the corner icon anchored to the bottom-right."""
-        super().resizeEvent(event)
-
-        if hasattr(self, 'corner_icon_label'):
-            padding = 15
-            
-            x = padding
-            y = self.height() - self.corner_icon_label.height() - padding
-            
-            self.corner_icon_label.move(x, y)
-            self.corner_icon_label.raise_()
 
     def closeEvent(self, event):
         self._stop_preview()
