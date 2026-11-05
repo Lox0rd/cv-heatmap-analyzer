@@ -14,6 +14,12 @@ class VideoWidget(QLabel):
         self.setText("Ожидание видеопотока...")
 
         self.last_frame = None
+        self.zones = []
+
+    def set_zones(self, zones):
+        self.zones = list(zones)
+        if self.last_frame is not None:
+            self._display_frame(self.last_frame)
 
     def set_placeholder(self, text: str):
         """Сбрасывает текущий кадр и показывает текст-заглушку."""
@@ -27,6 +33,10 @@ class VideoWidget(QLabel):
 
     def _display_frame(self, frame: np.ndarray):
         """Отображает видеокадр с сохранением пропорций."""
+        frame = frame.copy()
+        for zone in self.zones:
+            points = np.array(zone.points, dtype=np.int32).reshape((-1, 1, 2))
+            cv2.polylines(frame, [points], True, (255, 210, 50), 2)
         rgb_frame = cv2.cvtColor(
             frame,
             cv2.COLOR_BGR2RGB,
