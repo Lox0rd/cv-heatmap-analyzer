@@ -4,7 +4,7 @@ from html import escape
 from pathlib import Path
 
 from PyQt6.QtCore import QBuffer, QIODevice, QMarginsF, QSize, QSizeF, Qt, QUrl
-from PyQt6.QtGui import QImage, QPageLayout, QPageSize, QPdfWriter, QTextDocument
+from PyQt6.QtGui import QFont, QImage, QPageLayout, QPageSize, QPdfWriter, QTextDocument
 
 from src.export import save_bytes
 from src.export.image_exporter import read_image
@@ -20,6 +20,7 @@ def export_pdf(
         raise ValueError("Для отчёта нужна карта или статистика.")
 
     document = QTextDocument()
+    document.setDefaultFont(QFont("Arial", 11))
     document.setDefaultStyleSheet("""
         body { font: 11pt; color: #18324a; }
         h1 { font-size: 23pt; color: #104a7a; }

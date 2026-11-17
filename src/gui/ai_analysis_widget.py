@@ -1,10 +1,12 @@
 """Send a heatmap-overlay frame and the configured prompt to the vision model."""
 
+from hashlib import sha256
 from pathlib import Path
 
 import cv2
 import numpy as np
 from PyQt6.QtCore import QThread, pyqtSignal
+from PyQt6.QtGui import QImage
 from PyQt6.QtWidgets import (
     QFrame,
     QHBoxLayout,
@@ -33,7 +35,7 @@ class VisionAnalysisThread(QThread):
     def run(self):
         try:
             response = VisionAPI().analyze_frame(self.frame, self.prompt)
-            self.response_ready.emit(response or "Модель не вернула текст.")
+            self.response_ready.emit(response or "")
         except Exception as error:
             self.error_occurred.emit(str(error))
 
@@ -49,6 +51,9 @@ class AIAnalysisWidget(QWidget):
         self.overlay_frame = None
         self.zones = []
         self.worker = None
+        self._frame_revision = None
+        self._request_revision = None
+        self._commentary = None
 
         layout = QHBoxLayout(self)
         layout.setContentsMargins(22, 22, 22, 22)
@@ -113,7 +118,18 @@ class AIAnalysisWidget(QWidget):
         if self._is_running():
             return self.overlay_frame is not None
         path = self.output_dir / "heatmap_overlay.jpg"
-        frame = cv2.imread(str(path)) if path.is_file() else None
+        try:
+            payload = path.read_bytes()
+        except OSError:
+            payload = b""
+        revision = sha256(payload).digest() if payload else None
+        if revision != self._frame_revision:
+            self.invalidate_commentary()
+        self._frame_revision = revision
+        frame = (
+            cv2.imdecode(np.frombuffer(payload, dtype=np.uint8), cv2.IMREAD_COLOR)
+            if payload else None
+        )
         if frame is None:
             self.overlay_frame = None
             self.zones = []
@@ -161,7 +177,8 @@ class AIAnalysisWidget(QWidget):
                 "\n\nКонтуры с номерами на кадре обозначают зоны интереса: "
                 f"{legend}. Учитывай их в выводах."
             )
-        self.result_output.clear()
+        self.invalidate_commentary()
+        self._request_revision = self._frame_revision
         self.status_label.setText("Кадр и промпт отправляются модели...")
         self.analyze_btn.setEnabled(False)
         self.worker = VisionAnalysisThread(self.overlay_frame, prompt)
@@ -170,12 +187,39 @@ class AIAnalysisWidget(QWidget):
         self.worker.finished.connect(self._finish_analysis)
         self.worker.start()
 
+    def invalidate_commentary(self) -> None:
+        self._request_revision = None
+        self._commentary = None
+        self.result_output.clear()
+
+    def export_commentary(self, overlay: Path) -> tuple[str, QImage] | None:
+        if self._commentary is None:
+            return None
+        revision, text, image = self._commentary
+        if sha256(overlay.read_bytes()).digest() == revision:
+            return text, image
+        return None
+
     def _show_response(self, response: str) -> None:
+        if self._request_revision is None:
+            return
+        if response.strip():
+            frame = self.worker.frame
+            height, width = frame.shape[:2]
+            image = QImage(
+                frame.data, width, height, frame.strides[0], QImage.Format.Format_BGR888
+            ).copy()
+            self._commentary = (self._request_revision, response, image)
+        else:
+            response = "Модель не вернула текст."
         self.result_output.setPlainText(response)
         self.status_label.setText("Анализ завершён.")
 
     def _show_error(self, message: str) -> None:
-        self.status_label.setText(f"Ошибка анализа: {message}")
+        if self._request_revision is not None:
+            self.status_label.setText(f"Ошибка анализа: {message}")
 
     def _finish_analysis(self) -> None:
+        if self._request_revision is None:
+            self.refresh_frame()
         self.analyze_btn.setEnabled(self.overlay_frame is not None)
