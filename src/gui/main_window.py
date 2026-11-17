@@ -2,7 +2,6 @@ import json
 from pathlib import Path
 
 import cv2
-from PyQt6.QtCore import Qt
 from PyQt6.QtWidgets import (
     QApplication,
     QDialog,
@@ -18,6 +17,7 @@ from PyQt6.QtWidgets import (
 )
 
 from src.gui.ai_analysis_widget import AIAnalysisWidget
+from src.gui.export_widget import ExportWidget
 from src.gui.map_widget import MapWidget
 from src.gui.preview_thread import VideoPreviewThread
 from src.gui.processing_thread import ProcessingThread
@@ -119,7 +119,8 @@ class MainWindow(QMainWindow):
             prompt_provider=lambda: self.settings_widget.ai_prompt_input.toPlainText(),
         )
         self.tabs.addTab(self.ai_widget, "AI анализ")
-        self.tabs.addTab(self._placeholder_page(), "Экспорт")
+        self.export_widget = ExportWidget(self.ai_widget.export_commentary)
+        self.tabs.addTab(self.export_widget, "Экспорт")
         self.tabs.currentChanged.connect(self._on_tab_changed)
 
         sidebar = QFrame()
@@ -188,17 +189,10 @@ class MainWindow(QMainWindow):
         self.settings_dialog.raise_()
         self.settings_dialog.activateWindow()
 
-    @staticmethod
-    def _placeholder_page():
-        page = QWidget()
-        page.setObjectName("placeholderPage")
-        page_layout = QVBoxLayout(page)
-        page_layout.addStretch()
-        label = QLabel("Раздел в разработке")
-        label.setObjectName("placeholderText")
-        page_layout.addWidget(label, alignment=Qt.AlignmentFlag.AlignCenter)
-        page_layout.addStretch()
-        return page
+    def _refresh_export(self):
+        self.export_widget.refresh(
+            self.map_widget.output_dir, self.statistics_widget.statistics_path
+        )
 
     # === Предпросмотр видео ===
     def _selected_source(self):
@@ -214,6 +208,8 @@ class MainWindow(QMainWindow):
             self.map_widget.refresh()
         if index == 3 and not processing:
             self.statistics_widget.refresh()
+        if self.tabs.widget(index) is self.export_widget and not processing:
+            self._refresh_export()
         if index == 4:
             self.ai_widget.refresh_frame()
         if index == 1:
@@ -413,6 +409,8 @@ class MainWindow(QMainWindow):
         selected_objects: list | None = None,
     ):
         self._stop_preview()
+        self.export_widget.begin_processing()
+        self.ai_widget.invalidate_commentary()
         self._analysis_result_path = None
         self._statistics_result_saved = False
         source_type = self.settings_widget.source_type_combo.currentData()
@@ -488,6 +486,11 @@ class MainWindow(QMainWindow):
                         {
                             "source_key": self._analysis_result_source_key,
                             "size": [width, height],
+                            "raw_available": (
+                                self.thread.raw_heatmap_saved
+                                if self.thread is not None else None
+                            ),
+                            "statistics_available": self._statistics_result_saved,
                         },
                         ensure_ascii=False,
                     ),
@@ -499,6 +502,7 @@ class MainWindow(QMainWindow):
                     "Карта сохранена, но не удалось сохранить её источник."
                 )
         self.map_widget.refresh()
+        self.ai_widget.invalidate_commentary()
         self.ai_widget.refresh_frame()
 
     def _on_statistics_saved(self, path: str):
@@ -510,6 +514,7 @@ class MainWindow(QMainWindow):
         self.people_count_label.setText(f"Людей в кадре: {count}")
 
     def on_finished(self):
+        self._refresh_export()
         self.settings_widget.set_analysis_running(False)
         self.map_widget.refresh_btn.setEnabled(True)
         self.statistics_widget.refresh_btn.setEnabled(True)

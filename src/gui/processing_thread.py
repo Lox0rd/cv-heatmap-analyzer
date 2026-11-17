@@ -74,6 +74,7 @@ class ProcessingThread(QThread):
         self._is_running = True
         self._seek_position = None  # Позиция для перемотки
         self.video = None
+        self.raw_heatmap_saved = False
 
     def run(self):
         try:
@@ -220,6 +221,7 @@ class ProcessingThread(QThread):
                 heatmap_renderer.save(
                     heatmap_generator.get_heatmap(), raw_heatmap_path, colormap
                 )
+                self.raw_heatmap_saved = True
                 self.status_update.emit(f"✓ Сырая тепловая карта: {raw_heatmap_path}")
             except IOError as e:
                 self.status_update.emit(f"✗ Ошибка сохранения сырой карты: {e}")

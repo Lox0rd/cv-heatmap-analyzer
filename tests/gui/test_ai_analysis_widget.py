@@ -28,6 +28,15 @@ def test_sends_overlay_frame_and_prompt_to_vision_api(qtbot, monkeypatch, tmp_pa
     assert np.array_equal(received[0][0], widget.overlay_frame)
     assert received[0][1] == "Опиши тепловую карту"
     assert "зона активности" in widget.result_output.toPlainText()
+    overlay = tmp_path / "heatmap_overlay.jpg"
+    text, exported_frame = widget.export_commentary(overlay)
+    assert text == "На кадре видна зона активности."
+    assert exported_frame.pixelColor(0, 0).red() == 90
+
+    cv2.imwrite(str(overlay), np.full_like(image, 40))
+    assert widget.export_commentary(overlay) is None
+    assert widget.refresh_frame()
+    assert widget.result_output.toPlainText() == ""
 
 
 def test_ai_analysis_requires_heatmap_and_prompt(qtbot, tmp_path):
