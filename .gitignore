@@ -142,6 +142,9 @@ Desktop.ini
 # Project-specific
 # ==============================
 
+# Local project submission materials
+/submission/
+
 # Local configuration
 config.local.*
 
